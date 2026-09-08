@@ -45,8 +45,16 @@ try {
         # API endpoint to safely supply environment config to client
         if ($relPath -eq "api/config") {
             $token = ""
-            if ($envVariables.ContainsKey("APIFY_API_TOKEN")) {
-                $token = $envVariables["APIFY_API_TOKEN"]
+            if (Test-Path -Path $envPath -PathType Leaf) {
+                Get-Content $envPath | ForEach-Object {
+                    $l = $_.Trim()
+                    if ($l -and -not $l.StartsWith("#") -and $l.Contains("=")) {
+                        $p = $l.Split("=", 2)
+                        if ($p[0].Trim() -eq "APIFY_API_TOKEN") {
+                            $token = $p[1].Trim()
+                        }
+                    }
+                }
             }
             $json = @{ apifyToken = $token } | ConvertTo-Json
             $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
