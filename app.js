@@ -261,6 +261,87 @@ findButton.addEventListener("click", async () => {
   }
 });
 
+const importDatasetBtn = $("importDatasetBtn");
+const datasetIdInput = $("datasetId");
+
+async function importDataset(datasetId) {
+  const token = (tokenInput.value || localStorage.getItem(STORAGE_KEY_TOKEN) || "").trim();
+  if (!token) {
+    setStatus("Pre import datasetu je nutný Apify token. Vlož ho do nastavení alebo do .env.");
+    $("settings").classList.remove("hidden");
+    return;
+  }
+  const cleanId = (datasetId || "").replace(/^#/, "").trim();
+  if (!cleanId) {
+    setStatus("Zadaj platné Apify Dataset ID.");
+    return;
+  }
+
+  const city = $("city").value.trim() || "Importované";
+  const startAddress = $("startAddress").value.trim();
+  const maxReviews = Number($("maxReviews").value) || 500;
+  const maxLeads = Number($("maxLeads").value) || 30;
+
+  if (importDatasetBtn) importDatasetBtn.disabled = true;
+  setStatus(`Sťahujem dataset #${cleanId} z Apify…`);
+
+  try {
+    const res = await fetch(`https://api.apify.com/v2/datasets/${cleanId}/items?token=${encodeURIComponent(token)}`);
+    if (!res.ok) {
+      if (res.status === 403) throw new Error("Apify 403: Neplatný token alebo nemáš oprávnenie k tomuto datasetu.");
+      if (res.status === 404) throw new Error(`Dataset #${cleanId} sa nenašiel.`);
+      throw new Error(`Apify chyba (HTTP ${res.status}).`);
+    }
+
+    const rawLeads = await res.json();
+    if (!Array.isArray(rawLeads) || !rawLeads.length) {
+      throw new Error("Dataset je prázdny alebo neobsahuje položky.");
+    }
+
+    setStatus(`Spracovávam ${rawLeads.length} leadov z datasetu…`);
+
+    let start = null;
+    if (startAddress) {
+      try {
+        start = await geocode(startAddress);
+      } catch (e) {
+        console.warn("Štartovaciu adresu sa nepodarilo geokódovať:", e);
+      }
+    }
+
+    const eligible = rawLeads.filter((x) => x.phone && x.location && (!x.reviewsCount || x.reviewsCount <= maxReviews) && !x.permanentlyClosed && !x.temporarilyClosed).sort((a, b) => leadScore(b) - leadScore(a));
+    const leadsToProcess = eligible.length ? eligible : rawLeads.filter((x) => x.location);
+
+    if (!leadsToProcess.length) {
+      throw new Error("V datasete sa nenašli žiadne položky s GPS súradnicami.");
+    }
+
+    if (!start) {
+      start = leadsToProcess[0].location;
+    }
+
+    const balanced = leadsToProcess.slice(0, maxLeads);
+    const optimized = optimizeRoute(start, balanced);
+
+    saveLeadsToStorage(start, optimized, city);
+    render(start, optimized, city);
+    $("settings").classList.add("hidden");
+    setStatus(`Úspešne importovaných ${optimized.length} leadov z datasetu #${cleanId}!`);
+  } catch (err) {
+    setStatus(err.message || "Chyba pri importe datasetu.");
+  } finally {
+    if (importDatasetBtn) importDatasetBtn.disabled = false;
+  }
+}
+
+if (importDatasetBtn) {
+  importDatasetBtn.addEventListener("click", () => {
+    const val = datasetIdInput ? datasetIdInput.value : "";
+    importDataset(val);
+  });
+}
+
+
 // Initialize on page load
 initToken();
 restoreSavedLeads();

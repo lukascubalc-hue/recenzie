@@ -23,8 +23,15 @@
       <section id="settings" class="panel hidden">
         <label for="token">Apify API token</label>
         <input id="token" type="password" autocomplete="off" placeholder="apify_api_…" />
-        <p class="hint">Uloží sa iba lokálne v tomto zariadení. Token nikdy neposielaj iným ľuďom.</p>
+        <p class="hint">Uloží sa iba lokálne v tomto zariadení alebo do súboru .env.</p>
         <button id="saveToken" class="secondary">Uložiť token</button>
+
+        <hr style="border:0; border-top:1px solid #dce6de; margin:16px 0;" />
+
+        <label for="datasetId">Importovať existujúci Dataset ID</label>
+        <input id="datasetId" type="text" autocomplete="off" placeholder="napr. tAlrTSyTezjfBSiBf" value="tAlrTSyTezjfBSiBf" />
+        <p class="hint">Načíta hotové leady z Apify datasetu a naplánuje trasu bez nového crawlera.</p>
+        <button id="importDatasetBtn" class="secondary">Importovať dataset</button>
       </section>
 
       <section class="panel form-panel">
