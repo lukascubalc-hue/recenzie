@@ -48,10 +48,14 @@
       <section id="result" class="hidden">
         <div class="result-heading">
           <div>
-            <p class="eyebrow">VYBRANÉ LEADY</p>
+            <p id="resultEyebrow" class="eyebrow">VYBRANÉ LEADY</p>
             <h2 id="resultTitle">Trasa</h2>
+            <p id="savedAtInfo" class="hint"></p>
           </div>
-          <span id="leadCount" class="badge"></span>
+          <div class="result-actions">
+            <span id="leadCount" class="badge"></span>
+            <button id="clearLeads" class="secondary clear-btn" title="Vymazať uložené leady">✕ Zmazať</button>
+          </div>
         </div>
         <div id="routeLinks" class="route-links"></div>
         <p class="hint">Poradie je optimalizované podľa polohy. Google Maps dopočíta jazdnú trasu a dopravu.</p>
