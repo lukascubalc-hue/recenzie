@@ -189,15 +189,17 @@ function render(start, leads, city, savedAt) {
 function restoreSavedLeads() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_LEADS);
-    if (!raw) return;
+    if (!raw) return false;
     const data = JSON.parse(raw);
     if (data && Array.isArray(data.leads) && data.leads.length && data.start) {
       render(data.start, data.leads, data.city || "Uložené", data.savedAt);
       setStatus(`Načítané uložené leady (${data.leads.length}) z lokálneho úložiska.`);
+      return true;
     }
   } catch (e) {
     console.error("Nepodarilo sa obnoviť uložené leady:", e);
   }
+  return false;
 }
 
 async function waitForRun(runId, token) {
@@ -341,9 +343,21 @@ if (importDatasetBtn) {
   });
 }
 
+const quickImportBtn = $("quickImportBtn");
+if (quickImportBtn) {
+  quickImportBtn.addEventListener("click", () => {
+    importDataset("tAlrTSyTezjfBSiBf");
+  });
+}
 
 // Initialize on page load
-initToken();
-restoreSavedLeads();
+async function bootstrap() {
+  await initToken();
+  const restored = restoreSavedLeads();
+  if (!restored) {
+    importDataset("tAlrTSyTezjfBSiBf");
+  }
+}
+bootstrap();
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
