@@ -34,5 +34,9 @@ button { border:0; border-radius:12px; padding:12px 15px; font:inherit; font-wei
 .lead-actions a { color:#0f6540; font-size:.82rem; font-weight:750; text-decoration:none; }
 .toggle-done-btn { background:#f0f5f1; border:1px solid #cbd8ce; border-radius:8px; padding:4px 9px; font-size:.75rem; font-weight:700; color:#2c4b37; margin-left:auto; }
 .lead.done .toggle-done-btn { background:#12372a; color:#fff; border-color:#12372a; }
+.empty-state { border:2px dashed #cbd8ce; border-radius:16px; padding:28px 18px; text-align:center; color:#53695a; margin-top:14px; background:#fafcfa; }
+.empty-state p { margin:0 0 6px; font-weight:600; font-size:0.95rem; }
+.empty-state .hint { margin:0; color:#728477; font-weight:normal; }
 @media (min-width:700px) { .app-shell { padding-top:42px; } }
+
 

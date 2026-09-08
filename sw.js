@@ -1,4 +1,4 @@
-const CACHE = "nfc-leads-v2";
+const CACHE = "nfc-leads-v3";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

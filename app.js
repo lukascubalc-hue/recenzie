@@ -119,9 +119,16 @@ function saveLeadsToStorage(start, leads, city, savedAt) {
 function clearSavedLeads() {
   localStorage.removeItem(STORAGE_KEY_LEADS);
   currentRouteData = null;
-  $("result").classList.add("hidden");
-  $("leadList").innerHTML = "";
   $("routeLinks").innerHTML = "";
+  $("leadCount").textContent = "0 leadov";
+  if ($("clearLeads")) $("clearLeads").classList.add("hidden");
+  if ($("savedAtInfo")) $("savedAtInfo").textContent = "";
+  $("leadList").innerHTML = `
+    <div id="emptyState" class="empty-state">
+      <p>📭 Zatiaľ nie sú načítané žiadne leady.</p>
+      <p class="hint">Klikni na <strong>📥 Načítať dataset (#tAlrTSyTezjfBSiBf)</strong> vyššie pre okamžité načítanie 140 podnikov.</p>
+    </div>
+  `;
   setStatus("Uložené leady boli vymazané.");
 }
 
@@ -143,11 +150,12 @@ window.toggleLeadDone = toggleLeadDone;
 
 function render(start, leads, city, savedAt) {
   currentRouteData = { start, leads, city, savedAt: savedAt || new Date().toISOString() };
-  $("result").classList.remove("hidden");
   $("resultTitle").textContent = `Trasa: ${city}`;
 
   const doneCount = leads.filter((x) => x.done).length;
   $("leadCount").textContent = doneCount > 0 ? `${doneCount}/${leads.length} vybavené` : `${leads.length} leadov`;
+
+  if ($("clearLeads")) $("clearLeads").classList.remove("hidden");
 
   const savedAtElem = $("savedAtInfo");
   if (savedAtElem) {
@@ -285,17 +293,33 @@ async function importDataset(datasetId) {
   const maxLeads = Number($("maxLeads").value) || 30;
 
   if (importDatasetBtn) importDatasetBtn.disabled = true;
-  setStatus(`Sťahujem dataset #${cleanId} z Apify…`);
+  setStatus(`Sťahujem dataset #${cleanId}…`);
 
   try {
-    const res = await fetch(`https://api.apify.com/v2/datasets/${cleanId}/items?token=${encodeURIComponent(token)}`);
-    if (!res.ok) {
-      if (res.status === 403) throw new Error("Apify 403: Neplatný token alebo nemáš oprávnenie k tomuto datasetu.");
-      if (res.status === 404) throw new Error(`Dataset #${cleanId} sa nenašiel.`);
-      throw new Error(`Apify chyba (HTTP ${res.status}).`);
+    let rawLeads = null;
+
+    // Fast local cache path
+    if (cleanId === "tAlrTSyTezjfBSiBf") {
+      try {
+        const localRes = await fetch("dataset_leads.json");
+        if (localRes.ok) {
+          rawLeads = await localRes.json();
+        }
+      } catch (e) {
+        // Fallback to network
+      }
     }
 
-    const rawLeads = await res.json();
+    if (!rawLeads) {
+      const res = await fetch(`https://api.apify.com/v2/datasets/${cleanId}/items?token=${encodeURIComponent(token)}`);
+      if (!res.ok) {
+        if (res.status === 403) throw new Error("Apify 403: Neplatný token alebo nemáš oprávnenie k tomuto datasetu.");
+        if (res.status === 404) throw new Error(`Dataset #${cleanId} sa nenašiel.`);
+        throw new Error(`Apify chyba (HTTP ${res.status}).`);
+      }
+      rawLeads = await res.json();
+    }
+
     if (!Array.isArray(rawLeads) || !rawLeads.length) {
       throw new Error("Dataset je prázdny alebo neobsahuje položky.");
     }
@@ -360,4 +384,4 @@ async function bootstrap() {
 }
 bootstrap();
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=2");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=3");

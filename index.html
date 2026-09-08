@@ -7,7 +7,7 @@
     <meta name="description" content="Mobilný výber NFC review leadov z Google Maps." />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=2" />
+    <link rel="stylesheet" href="styles.css?v=3" />
     <title>NFC Leady</title>
   </head>
   <body>
@@ -53,23 +53,27 @@
         <p id="status" class="status" aria-live="polite">Pridaj Apify token v nastaveniach.</p>
       </section>
 
-      <section id="result" class="hidden">
+      <section id="result">
         <div class="result-heading">
           <div>
-            <p id="resultEyebrow" class="eyebrow">VYBRANÉ LEADY</p>
-            <h2 id="resultTitle">Trasa</h2>
+            <p id="resultEyebrow" class="eyebrow">ZOZNAM LEADOV</p>
+            <h2 id="resultTitle">Trasa & Vybrané prevádzky</h2>
             <p id="savedAtInfo" class="hint"></p>
           </div>
           <div class="result-actions">
-            <span id="leadCount" class="badge"></span>
-            <button id="clearLeads" class="secondary clear-btn" title="Vymazať uložené leady">✕ Zmazať</button>
+            <span id="leadCount" class="badge">0 leadov</span>
+            <button id="clearLeads" class="secondary clear-btn hidden" title="Vymazať uložené leady">✕ Zmazať</button>
           </div>
         </div>
         <div id="routeLinks" class="route-links"></div>
-        <p class="hint">Poradie je optimalizované podľa polohy. Google Maps dopočíta jazdnú trasu a dopravu.</p>
-        <div id="leadList" class="lead-list"></div>
+        <div id="leadList" class="lead-list">
+          <div id="emptyState" class="empty-state">
+            <p>📭 Zatiaľ nie sú načítané žiadne leady.</p>
+            <p class="hint">Klikni na <strong>📥 Načítať dataset (#tAlrTSyTezjfBSiBf)</strong> vyššie pre okamžité načítanie 140 podnikov.</p>
+          </div>
+        </div>
       </section>
     </main>
-    <script src="app.js?v=2"></script>
+    <script src="app.js?v=3"></script>
   </body>
 </html>
