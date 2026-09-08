@@ -360,4 +360,4 @@ async function bootstrap() {
 }
 bootstrap();
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=2");
