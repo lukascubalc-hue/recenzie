@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#12372a" />
+    <meta name="description" content="Mobilný výber NFC review leadov z Google Maps." />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>NFC Leady</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header>
+        <div>
+          <p class="eyebrow">NFC REVIEW TAGY</p>
+          <h1>NFC Leady</h1>
+        </div>
+        <button id="settingsButton" class="icon-button" aria-label="Nastavenia">⚙</button>
+      </header>
+
+      <section id="settings" class="panel hidden">
+        <label for="token">Apify API token</label>
+        <input id="token" type="password" autocomplete="off" placeholder="apify_api_…" />
+        <p class="hint">Uloží sa iba lokálne v tomto zariadení. Token nikdy neposielaj iným ľuďom.</p>
+        <button id="saveToken" class="secondary">Uložiť token</button>
+      </section>
+
+      <section class="panel form-panel">
+        <label for="city">Mesto</label>
+        <input id="city" autocomplete="address-level2" value="Trnava" placeholder="napr. Trnava" />
+
+        <label for="startAddress">Štartovacia adresa</label>
+        <input id="startAddress" autocomplete="street-address" value="Hlavná 12, Trnava" placeholder="napr. Hlavná 12, Trnava" />
+
+        <label for="categories">Typy prevádzok</label>
+        <textarea id="categories" rows="3">reštaurácia, kaviareň, kaderníctvo, kozmetický salón, autoservis, zubár, fitness centrum</textarea>
+
+        <div class="filters">
+          <label>Max. recenzií <input id="maxReviews" type="number" min="1" max="500" value="50" /></label>
+          <label>Max. leadov <input id="maxLeads" type="number" min="1" max="30" value="20" /></label>
+        </div>
+        <button id="findLeads" class="primary">Nájsť najlepšie leady</button>
+        <p id="status" class="status" aria-live="polite">Pridaj Apify token v nastaveniach.</p>
+      </section>
+
+      <section id="result" class="hidden">
+        <div class="result-heading">
+          <div>
+            <p class="eyebrow">VYBRANÉ LEADY</p>
+            <h2 id="resultTitle">Trasa</h2>
+          </div>
+          <span id="leadCount" class="badge"></span>
+        </div>
+        <div id="routeLinks" class="route-links"></div>
+        <p class="hint">Poradie je optimalizované podľa polohy. Google Maps dopočíta jazdnú trasu a dopravu.</p>
+        <div id="leadList" class="lead-list"></div>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
