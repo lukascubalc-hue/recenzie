@@ -580,9 +580,16 @@ if (findButton) {
     const maxReviews = Number($("maxReviews").value);
     const maxLeads = Number($("maxLeads").value);
 
-    if (!token) return setStatus("Zadaj najprv Apify token.");
-    if (!city) return setStatus("Zadaj mesto.");
-    if (!startAddress) return setStatus("Zadaj štartovaciu adresu.");
+    if (!token) {
+      $("settings").classList.remove("hidden");
+      if (tokenInput) {
+        tokenInput.focus();
+        tokenInput.scrollIntoView({ behavior: "smooth" });
+      }
+      return setStatus("⚠️ Pre vyhľadanie nového mesta vlož Apify API token v nastaveniach vyššie.");
+    }
+    if (!city) return setStatus("Zadaj názov mesta.");
+    if (!startAddress) return setStatus("Zadaj štartovaciu adresu alebo použi '📍 Moja poloha'.");
 
     findButton.disabled = true;
     try {
