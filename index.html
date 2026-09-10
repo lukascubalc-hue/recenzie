@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=6" />
+    <link rel="stylesheet" href="styles.css?v=7" />
     <title>NFC Leady</title>
   </head>
   <body>
@@ -26,17 +26,20 @@
           </div>
         </div>
         <div class="install-banner-actions">
-          <button id="installAppBtn" class="primary" style="margin-top:0;">Inštalovať</button>
-          <button id="dismissInstallBtn" class="secondary">Neskôr</button>
+          <button id="installAppBtn" class="primary install-action-btn">Inštalovať</button>
+          <button id="dismissInstallBtn" class="secondary install-dismiss-btn" title="Zavrieť">✕</button>
         </div>
       </div>
 
-      <header>
-        <div>
-          <p class="eyebrow">NFC REVIEW TAGY</p>
-          <h1>NFC Leady</h1>
+      <header class="hero">
+        <div class="hero-top">
+          <div class="hero-title-wrap">
+            <span class="app-badge">PWA V TERÉNE</span>
+            <h1>NFC Leady</h1>
+          </div>
+          <button id="settingsButton" class="icon-button" aria-label="Nastavenia" title="Nastavenia a token">⚙️</button>
         </div>
-        <button id="settingsButton" class="icon-button" aria-label="Nastavenia">⚙</button>
+        <p class="subtitle">Vyhľadanie podnikov s potenciálom pre Google NFC recenzie a optimalizácia trasy priamo v teréne.</p>
       </header>
 
       <section id="settings" class="panel hidden">
@@ -51,6 +54,16 @@
         <input id="datasetId" type="text" autocomplete="off" placeholder="napr. tAlrTSyTezjfBSiBf" value="tAlrTSyTezjfBSiBf" />
         <p class="hint">Načíta hotové leady z Apify datasetu a naplánuje trasu bez nového crawlera.</p>
         <button id="importDatasetBtn" class="secondary">Importovať dataset</button>
+
+        <hr style="border:0; border-top:1px solid #dce6de; margin:16px 0;" />
+
+        <p class="eyebrow" style="margin-bottom:8px;">ZÁLOHOVANIE & PRENOS DÁT</p>
+        <p class="hint" style="margin-bottom:10px;">Stiahni si zálohu svojich leadov a tržieb do súboru alebo ju obnov v inom zariadení.</p>
+        <div class="backup-actions-grid">
+          <button id="backupJsonBtn" class="secondary" type="button">💾 Stiahnuť zálohu (JSON)</button>
+          <button id="restoreJsonTriggerBtn" class="secondary" type="button">📥 Obnoviť zo zálohy</button>
+          <input id="restoreJsonInput" type="file" accept=".json" style="display:none;" />
+        </div>
       </section>
 
       <!-- Rýchly import datasetu -->
@@ -117,6 +130,16 @@
           </div>
         </div>
 
+        <!-- Nástrojová lišta: Export & Zdieľanie -->
+        <div id="crmToolbar" class="crm-toolbar">
+          <button id="exportCsvBtn" class="crm-tool-btn export-btn" type="button" title="Stiahnuť tabuľku pre Excel (CSV)">
+            📊 Export CSV (Excel)
+          </button>
+          <button id="shareSummaryBtn" class="crm-tool-btn share-btn" type="button" title="Zdieľať alebo skopírovať sumár dňa">
+            📤 Zdieľať sumár dňa
+          </button>
+        </div>
+
         <!-- Filtre leadov v teréne -->
         <div class="leads-filter-tabs">
           <button id="filterAll" class="filter-tab active" type="button">Všetky (<span id="allCount">0</span>)</button>
@@ -136,6 +159,6 @@
         </div>
       </section>
     </main>
-    <script src="app.js?v=6"></script>
+    <script src="app.js?v=7"></script>
   </body>
 </html>

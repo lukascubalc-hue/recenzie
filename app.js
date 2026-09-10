@@ -17,6 +17,11 @@ const importDatasetBtn = $("importDatasetBtn");
 const installBanner = $("installBanner");
 const installAppBtn = $("installAppBtn");
 const dismissInstallBtn = $("dismissInstallBtn");
+const exportCsvBtn = $("exportCsvBtn");
+const shareSummaryBtn = $("shareSummaryBtn");
+const backupJsonBtn = $("backupJsonBtn");
+const restoreJsonTriggerBtn = $("restoreJsonTriggerBtn");
+const restoreJsonInput = $("restoreJsonInput");
 
 let currentRouteData = null;
 let userGpsCoords = null;
@@ -377,6 +382,240 @@ function saveLeadNote(index, noteText) {
   saveLeadsToStorage(currentRouteData.start, currentRouteData.leads, currentRouteData.city, currentRouteData.savedAt);
 }
 window.saveLeadNote = saveLeadNote;
+
+// ----------------------------------------------------
+// Bod 5: Export do CSV / Excelu, Zdieľanie & Zálohovanie
+// ----------------------------------------------------
+function csvEscape(val) {
+  if (val === null || val === undefined) return '""';
+  const str = String(val).replace(/"/g, '""');
+  return `"${str}"`;
+}
+
+function exportLeadsToCsv() {
+  if (!currentRouteData || !currentRouteData.leads || !currentRouteData.leads.length) {
+    setStatus("⚠️ Zatiaľ nie sú načítané žiadne leady na export.");
+    return;
+  }
+
+  const leads = currentRouteData.leads;
+  const city = currentRouteData.city || "Trnava";
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+
+  const statusLabels = {
+    sold: "Predané",
+    followup: "Neskôr (Follow-up)",
+    rejected: "Odmietnuté",
+    closed: "Zavreté",
+    new: "Neoslovené"
+  };
+
+  const headers = [
+    "Poradie",
+    "Názov podniku",
+    "Kategória",
+    "Stav návštevy",
+    "Predané kusy (ks)",
+    "Tržba (€)",
+    "Poznámka",
+    "Telefón",
+    "Adresa",
+    "Mesto",
+    "Hodnotenie (★)",
+    "Počet recenzií",
+    "Potrebné recenzie do 4.8★",
+    "Web",
+    "Google Mapy"
+  ];
+
+  let totalSoldPieces = 0;
+  let totalRevenue = 0;
+
+  const rows = leads.map((lead, idx) => {
+    normalizeLead(lead);
+    const gap = calculateReviewGap(lead.totalScore, lead.reviewsCount);
+    const gapText = gap.type === "need_more" ? `+${gap.needed} ks (5★)` : `Ochrana (min. ${gap.dropReviews} ks 1★)`;
+
+    const soldCount = lead.crmStatus === "sold" ? (Number(lead.soldCount) || 1) : 0;
+    const rev = lead.crmStatus === "sold" ? (Number(lead.revenue) || 0) : 0;
+
+    totalSoldPieces += soldCount;
+    totalRevenue += rev;
+
+    const gmapsUrl = lead.location ? `https://www.google.com/maps/search/?api=1&query=${lead.location.lat},${lead.location.lng}` : "";
+
+    return [
+      idx + 1,
+      csvEscape(lead.title || ""),
+      csvEscape(lead.categoryName || lead.searchString || ""),
+      csvEscape(statusLabels[lead.crmStatus] || "Neoslovené"),
+      soldCount,
+      rev,
+      csvEscape(lead.note || ""),
+      csvEscape(lead.phone || ""),
+      csvEscape(lead.address || ""),
+      csvEscape(lead.city || city),
+      lead.totalScore || 0,
+      lead.reviewsCount || 0,
+      csvEscape(gapText),
+      csvEscape(lead.website || ""),
+      csvEscape(lead.url || gmapsUrl)
+    ].join(";");
+  });
+
+  const summaryRow = [
+    "",
+    "SPOLU",
+    "",
+    "",
+    totalSoldPieces,
+    totalRevenue,
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ].join(";");
+
+  const csvContent = [headers.join(";"), ...rows, summaryRow].join("\r\n");
+
+  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const safeCity = city.toLowerCase().replace(/[^a-z0-9]/gi, "_");
+  a.download = `nfc_leady_${safeCity}_${dateStr}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  if (exportCsvBtn) {
+    const orig = exportCsvBtn.textContent;
+    exportCsvBtn.textContent = "✓ Stiahnuté!";
+    setTimeout(() => { exportCsvBtn.textContent = orig; }, 2000);
+  }
+  setStatus(`CSV tabuľka pre ${city} bola stiahnutá (${leads.length} podnikov, tržba ${totalRevenue} €).`);
+}
+
+async function shareDailySummary() {
+  if (!currentRouteData || !currentRouteData.leads || !currentRouteData.leads.length) {
+    setStatus("⚠️ Žiadne načítané leady na vytvorenie sumáru.");
+    return;
+  }
+
+  const leads = currentRouteData.leads;
+  const city = currentRouteData.city || "Trnava";
+  leads.forEach(normalizeLead);
+
+  const total = leads.length;
+  const contacted = leads.filter((l) => l.crmStatus && l.crmStatus !== "new").length;
+  const soldLeads = leads.filter((l) => l.crmStatus === "sold");
+  const soldPieces = soldLeads.reduce((acc, l) => acc + (Number(l.soldCount) || 1), 0);
+  const revenue = soldLeads.reduce((acc, l) => acc + (Number(l.revenue) || 0), 0);
+  const followupLeads = leads.filter((l) => l.crmStatus === "followup");
+  const rejectedCount = leads.filter((l) => l.crmStatus === "rejected").length;
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("sk-SK");
+
+  let text = `📊 Denný report NFC Leady – ${city} (${dateStr})\n`;
+  text += `────────────────────────────\n`;
+  text += `👥 Oslovených: ${contacted} / ${total} podnikov\n`;
+  text += `🟢 Predaných: ${soldLeads.length} prevádzok (${soldPieces} ks)\n`;
+  text += `💰 Celková tržba: ${revenue} €\n`;
+  text += `🟡 Neskôr (follow-up): ${followupLeads.length}\n`;
+  text += `🔴 Odmietnutých: ${rejectedCount}\n`;
+
+  if (soldLeads.length > 0) {
+    text += `\n✅ Úspešné predaje:\n`;
+    soldLeads.forEach((l) => {
+      text += `• ${l.title}: ${l.soldCount} ks (${l.revenue} €)${l.note ? ' – "' + l.note + '"' : ''}\n`;
+    });
+  }
+
+  if (followupLeads.length > 0) {
+    text += `\n⏰ Plánovaný follow-up:\n`;
+    followupLeads.forEach((l) => {
+      text += `• ${l.title}${l.note ? ' – "' + l.note + '"' : ''}\n`;
+    });
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `NFC Leady Denný Report – ${city}`,
+        text: text
+      });
+      setStatus("Denný report bol úspešne odoslaný.");
+      return;
+    } catch (e) {
+      // Používateľ zrušil alebo zdieľanie nie je plne podporované, pokračujeme schránkou
+    }
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (shareSummaryBtn) {
+        const orig = shareSummaryBtn.textContent;
+        shareSummaryBtn.textContent = "✓ Skopírované do schránky!";
+        setTimeout(() => { shareSummaryBtn.textContent = orig; }, 2500);
+      }
+      setStatus("Denný report bol skopírovaný do schránky (pripravený pre WhatsApp/Email).");
+      return;
+    } catch (e) {
+      console.warn("Clipboard failed:", e);
+    }
+  }
+
+  alert(text);
+}
+
+function backupLeadsJson() {
+  if (!currentRouteData || !currentRouteData.leads || !currentRouteData.leads.length) {
+    setStatus("⚠️ Nie sú načítané žiadne leady na zálohu.");
+    return;
+  }
+  const city = (currentRouteData.city || "leads").toLowerCase().replace(/[^a-z0-9]/gi, "_");
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const jsonStr = JSON.stringify(currentRouteData, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `nfc_leady_zaloha_${city}_${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  setStatus("Záložný JSON súbor bol stiahnutý.");
+}
+
+function restoreLeadsJson(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data || !Array.isArray(data.leads) || !data.leads.length) {
+        throw new Error("Súbor neobsahuje platný zoznam leadov.");
+      }
+      saveLeadsToStorage(data.start || data.leads[0].location, data.leads, data.city || "Obnovené", data.savedAt);
+      render(data.start || data.leads[0].location, data.leads, data.city || "Obnovené", data.savedAt);
+      if ($("settings")) $("settings").classList.add("hidden");
+      setStatus(`✓ Úspešne obnovených ${data.leads.length} leadov zo zálohy!`);
+    } catch (err) {
+      setStatus(`Chyba pri obnove zálohy: ${err.message}`);
+    }
+  };
+  reader.readAsText(file);
+}
 
 // ----------------------------------------------------
 // Predajný asistent & Kalkulačka recenzií
@@ -821,6 +1060,28 @@ if (findButton) {
   });
 }
 
+// Listenery pre Bod 5: Export CSV, Zdieľanie a Zálohovanie
+if (exportCsvBtn) {
+  exportCsvBtn.addEventListener("click", exportLeadsToCsv);
+}
+if (shareSummaryBtn) {
+  shareSummaryBtn.addEventListener("click", shareDailySummary);
+}
+if (backupJsonBtn) {
+  backupJsonBtn.addEventListener("click", backupLeadsJson);
+}
+if (restoreJsonTriggerBtn && restoreJsonInput) {
+  restoreJsonTriggerBtn.addEventListener("click", () => {
+    restoreJsonInput.click();
+  });
+  restoreJsonInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) {
+      restoreLeadsJson(e.target.files[0]);
+      restoreJsonInput.value = "";
+    }
+  });
+}
+
 // ----------------------------------------------------
 // Inicializácia pri štarte aplikácie
 // ----------------------------------------------------
@@ -834,5 +1095,5 @@ async function bootstrap() {
 bootstrap();
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js?v=4");
+  navigator.serviceWorker.register("sw.js?v=7");
 }
