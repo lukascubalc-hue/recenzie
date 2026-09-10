@@ -37,10 +37,10 @@ const RATE_LIMIT_KEY = "nfc_portal_rate_limit";
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 60000;
 
-// SHA-256 hash kryptografické overenie (178155 a nfc2026 fallback)
+// SHA-256 kryptografické hashe pre overenie administrátora
 const VALID_PIN_HASHES = [
-  "a000162f02adea458d0d0c356713375510a43566b0c6acc93667b172d75a7403", // 178155
-  "2fdc85d0c7d28ec1185610f1f3e4fffe0edab2c7ee12d806217e56a4ff2463fe"  // nfc2026
+  "a000162f02adea458d0d0c356713375510a43566b0c6acc93667b172d75a7403",
+  "2fdc85d0c7d28ec1185610f1f3e4fffe0edab2c7ee12d806217e56a4ff2463fe"
 ];
 
 async function hashPin(str) {
@@ -1508,5 +1508,5 @@ async function bootstrap() {
 bootstrap();
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js?v=12");
+  navigator.serviceWorker.register("sw.js?v=13");
 }
