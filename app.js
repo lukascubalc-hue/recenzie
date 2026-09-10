@@ -17,6 +17,7 @@ const importDatasetBtn = $("importDatasetBtn");
 const installBanner = $("installBanner");
 const installAppBtn = $("installAppBtn");
 const dismissInstallBtn = $("dismissInstallBtn");
+const exportExcelBtn = $("exportExcelBtn");
 const exportCsvBtn = $("exportCsvBtn");
 const shareSummaryBtn = $("shareSummaryBtn");
 const backupJsonBtn = $("backupJsonBtn");
@@ -384,12 +385,210 @@ function saveLeadNote(index, noteText) {
 window.saveLeadNote = saveLeadNote;
 
 // ----------------------------------------------------
-// Bod 5: Export do CSV / Excelu, Zdieľanie & Zálohovanie
+// Bod 5: Export do Excelu (.xls), CSV, Zdieľanie & Zálohovanie
 // ----------------------------------------------------
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function csvEscape(val) {
   if (val === null || val === undefined) return '""';
   const str = String(val).replace(/"/g, '""');
   return `"${str}"`;
+}
+
+function exportLeadsToExcel() {
+  if (!currentRouteData || !currentRouteData.leads || !currentRouteData.leads.length) {
+    setStatus("⚠️ Zatiaľ nie sú načítané žiadne leady na export.");
+    return;
+  }
+
+  const leads = currentRouteData.leads;
+  const city = currentRouteData.city || "Trnava";
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("sk-SK");
+  const isoDate = now.toISOString().slice(0, 10);
+
+  leads.forEach(normalizeLead);
+
+  const total = leads.length;
+  const contacted = leads.filter((l) => l.crmStatus && l.crmStatus !== "new").length;
+  const soldLeads = leads.filter((l) => l.crmStatus === "sold");
+  const soldPieces = soldLeads.reduce((acc, l) => acc + (Number(l.soldCount) || 1), 0);
+  const revenue = soldLeads.reduce((acc, l) => acc + (Number(l.revenue) || 0), 0);
+  const followupLeads = leads.filter((l) => l.crmStatus === "followup");
+  const rejectedCount = leads.filter((l) => l.crmStatus === "rejected").length;
+
+  let tableRows = "";
+  leads.forEach((lead, idx) => {
+    const gap = calculateReviewGap(lead.totalScore, lead.reviewsCount);
+    const gapText = gap.type === "need_more" ? `+${gap.needed} ks (5★)` : `Ochrana (min. ${gap.dropReviews} ks 1★)`;
+
+    let rowBg = "#ffffff";
+    let statusText = "⚪ Neoslovené";
+    let statusStyle = "color:#6b7280; font-weight:600;";
+    let soldCountDisplay = "-";
+    let revenueDisplay = "-";
+
+    if (lead.crmStatus === "sold") {
+      rowBg = "#E8F5E9"; // Jemná pastelová zelená
+      statusText = "🟢 PREDANÉ";
+      statusStyle = "color:#166534; font-weight:bold;";
+      soldCountDisplay = `${lead.soldCount || 1} ks`;
+      revenueDisplay = `${lead.revenue || 0} €`;
+    } else if (lead.crmStatus === "followup") {
+      rowBg = "#FFFDE7"; // Jemná pastelová žltá
+      statusText = "🟡 NESKÔR";
+      statusStyle = "color:#b45309; font-weight:bold;";
+    } else if (lead.crmStatus === "rejected") {
+      rowBg = "#FFEBEE"; // Jemná pastelová červená
+      statusText = "🔴 ODMIETNUTÉ";
+      statusStyle = "color:#b91c1c; font-weight:bold;";
+    } else if (lead.crmStatus === "closed") {
+      rowBg = "#F3F4F6"; // Sivá
+      statusText = "⚪ ZAVRETÉ";
+      statusStyle = "color:#9ca3af;";
+    }
+
+    const gmapsUrl = lead.location
+      ? `https://www.google.com/maps/search/?api=1&query=${lead.location.lat},${lead.location.lng}`
+      : (lead.url || "");
+
+    const mapsLinkHtml = gmapsUrl ? `<a href="${gmapsUrl}" target="_blank" style="color:#0284c7; text-decoration:underline; font-weight:600;">🗺 Navigovať</a>` : "-";
+    const webLinkHtml = lead.website ? `<a href="${lead.website}" target="_blank" style="color:#0284c7; text-decoration:underline;">🌐 Web</a>` : "-";
+
+    tableRows += `
+      <tr style="background-color:${rowBg};">
+        <td style="text-align:center; font-weight:bold; color:#475569;">${idx + 1}</td>
+        <td style="font-weight:bold; font-size:11pt; color:#0f172a;">${escapeHtml(lead.title || "")}</td>
+        <td style="color:#475569;">${escapeHtml(lead.categoryName || lead.searchString || "")}</td>
+        <td style="${statusStyle} text-align:center;">${statusText}</td>
+        <td style="text-align:center; font-weight:bold; font-size:11pt;">${soldCountDisplay}</td>
+        <td style="text-align:right; font-weight:bold; font-size:11pt; ${lead.crmStatus === 'sold' ? 'color:#166534;' : 'color:#64748b;'}">${revenueDisplay}</td>
+        <td style="background-color:#ffffff; font-style:italic; color:#334155;">${escapeHtml(lead.note || "")}</td>
+        <td style="mso-number-format:'\\@'; text-align:left; font-family:Consolas,monospace;">${escapeHtml(lead.phone || "")}</td>
+        <td style="color:#475569;">${escapeHtml(lead.address || "")}</td>
+        <td style="text-align:center; font-weight:600; color:#d97706;">${lead.totalScore ? lead.totalScore + ' ★' : '-'}</td>
+        <td style="text-align:center; color:#64748b;">${lead.reviewsCount || 0}</td>
+        <td style="text-align:center; font-size:9.5pt; color:#475569;">${gapText}</td>
+        <td style="text-align:center;">${webLinkHtml}</td>
+        <td style="text-align:center;">${mapsLinkHtml}</td>
+      </tr>
+    `;
+  });
+
+  const html = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <!--[if gte mso 9]>
+      <xml>
+        <x:ExcelWorkbook>
+          <x:ExcelWorksheets>
+            <x:ExcelWorksheet>
+              <x:Name>NFC Leady - ${escapeHtml(city)}</x:Name>
+              <x:WorksheetOptions>
+                <x:DisplayGridlines/>
+              </x:WorksheetOptions>
+            </x:ExcelWorksheet>
+          </x:ExcelWorksheets>
+        </x:ExcelWorkbook>
+      </xml>
+      <![endif]-->
+      <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
+      <style>
+        body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1f2937; }
+        table { border-collapse: collapse; }
+        th { background-color: #12372A; color: #ffffff; font-weight: bold; padding: 10px 8px; border: 1px solid #0a1f18; font-size: 10.5pt; }
+        td { padding: 7px 10px; border: 1px solid #cbd5e1; vertical-align: middle; }
+      </style>
+    </head>
+    <body>
+      <h2 style="color:#12372A; margin:4px 0 2px 0; font-size:18pt;">NFC LEADY – PREHĽADNÝ TERÉNNY REPORT</h2>
+      <p style="color:#64748b; margin:0 0 16px 0; font-size:11pt;">Lokalita: <strong>${escapeHtml(city)}</strong> | Vygenerované: <strong>${dateStr}</strong></p>
+
+      <!-- Prehľadný dashboard na vrchu Excelu -->
+      <table style="margin-bottom:20px; border-collapse:separate; border-spacing:6px 0;">
+        <tr>
+          <td style="background-color:#dcfce7; border:2px solid #86efac; padding:12px 18px; border-radius:8px;">
+            <div style="font-size:9.5pt; font-weight:bold; color:#166534; text-transform:uppercase;">💰 CELKOVÁ TRŽBA</div>
+            <div style="font-size:20pt; font-weight:bold; color:#166534; margin-top:4px;">${revenue} €</div>
+          </td>
+          <td style="background-color:#f0fdf4; border:1.5px solid #bbf7d0; padding:12px 18px; border-radius:8px;">
+            <div style="font-size:9.5pt; font-weight:bold; color:#15803d; text-transform:uppercase;">📦 PREDANÉ KUSY</div>
+            <div style="font-size:18pt; font-weight:bold; color:#15803d; margin-top:4px;">${soldPieces} ks</div>
+          </td>
+          <td style="background-color:#f8fafc; border:1.5px solid #cbd5e1; padding:12px 18px; border-radius:8px;">
+            <div style="font-size:9.5pt; font-weight:bold; color:#475569; text-transform:uppercase;">👥 OSLOVENÉ PREVÁDZKY</div>
+            <div style="font-size:18pt; font-weight:bold; color:#0f172a; margin-top:4px;">${contacted} z ${total}</div>
+          </td>
+          <td style="background-color:#fefce8; border:1.5px solid #fde047; padding:12px 18px; border-radius:8px;">
+            <div style="font-size:9.5pt; font-weight:bold; color:#854d0e; text-transform:uppercase;">🟡 FOLLOW-UP (NESKÔR)</div>
+            <div style="font-size:18pt; font-weight:bold; color:#854d0e; margin-top:4px;">${followupLeads.length}</div>
+          </td>
+          <td style="background-color:#fef2f2; border:1.5px solid #fca5a5; padding:12px 18px; border-radius:8px;">
+            <div style="font-size:9.5pt; font-weight:bold; color:#991b1b; text-transform:uppercase;">🔴 ODMIETNUTÉ</div>
+            <div style="font-size:18pt; font-weight:bold; color:#991b1b; margin-top:4px;">${rejectedCount}</div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Tabuľka prevádzok -->
+      <table border="1">
+        <thead>
+          <tr>
+            <th style="width:35px; text-align:center;">#</th>
+            <th style="width:230px;">Názov podniku</th>
+            <th style="width:140px;">Kategória</th>
+            <th style="width:130px; text-align:center;">Stav návštevy</th>
+            <th style="width:85px; text-align:center;">Predané</th>
+            <th style="width:95px; text-align:right;">Tržba (€)</th>
+            <th style="width:250px;">Poznámka z terénu</th>
+            <th style="width:130px;">Telefón</th>
+            <th style="width:220px;">Adresa</th>
+            <th style="width:85px; text-align:center;">Hodnotenie</th>
+            <th style="width:75px; text-align:center;">Recenzie</th>
+            <th style="width:140px; text-align:center;">Potrebné do 4.8★</th>
+            <th style="width:80px; text-align:center;">Web</th>
+            <th style="width:130px; text-align:center;">Google Mapy</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+          <!-- Riadok SPOLU -->
+          <tr style="background-color:#12372A; color:#ffffff; font-weight:bold; font-size:12pt;">
+            <td colspan="4" style="text-align:right; padding:12px 10px; color:#ffffff; border-color:#0a1f18;">SPOLU CELKOM:</td>
+            <td style="text-align:center; color:#ffffff; border-color:#0a1f18;">${soldPieces} ks</td>
+            <td style="text-align:right; color:#ffffff; border-color:#0a1f18;">${revenue} €</td>
+            <td colspan="8" style="border-color:#0a1f18; background-color:#12372A;"></td>
+          </tr>
+        </tbody>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob(["\uFEFF" + html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const safeCity = city.toLowerCase().replace(/[^a-z0-9]/gi, "_");
+  a.download = `nfc_leady_${safeCity}_${isoDate}.xls`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  if (exportExcelBtn) {
+    const orig = exportExcelBtn.textContent;
+    exportExcelBtn.textContent = "✓ Stiahnuté!";
+    setTimeout(() => { exportExcelBtn.textContent = orig; }, 2000);
+  }
+  setStatus(`Prehľadný farebný Excel pre ${city} bol stiahnutý (${leads.length} podnikov, ${revenue} €).`);
 }
 
 function exportLeadsToCsv() {
@@ -401,15 +600,32 @@ function exportLeadsToCsv() {
   const leads = currentRouteData.leads;
   const city = currentRouteData.city || "Trnava";
   const now = new Date();
-  const dateStr = now.toISOString().slice(0, 10);
+  const dateStr = now.toLocaleDateString("sk-SK");
+  const isoDate = now.toISOString().slice(0, 10);
 
   const statusLabels = {
-    sold: "Predané",
-    followup: "Neskôr (Follow-up)",
-    rejected: "Odmietnuté",
-    closed: "Zavreté",
-    new: "Neoslovené"
+    sold: "🟢 Predané",
+    followup: "🟡 Neskôr (Follow-up)",
+    rejected: "🔴 Odmietnuté",
+    closed: "⚪ Zavreté",
+    new: "⚪ Neoslovené"
   };
+
+  leads.forEach(normalizeLead);
+
+  const total = leads.length;
+  const contacted = leads.filter((l) => l.crmStatus && l.crmStatus !== "new").length;
+  const soldLeads = leads.filter((l) => l.crmStatus === "sold");
+  const soldPieces = soldLeads.reduce((acc, l) => acc + (Number(l.soldCount) || 1), 0);
+  const revenue = soldLeads.reduce((acc, l) => acc + (Number(l.revenue) || 0), 0);
+  const followupCount = leads.filter((l) => l.crmStatus === "followup").length;
+  const rejectedCount = leads.filter((l) => l.crmStatus === "rejected").length;
+
+  const summaryTop = [
+    `REPORT PREDAJA NFC LEADOV;Mesto:;${city};Dátum:;${dateStr};Celková tržba:;${revenue} €;Predané kusy:;${soldPieces} ks;Oslovených:;${contacted} / ${total}`,
+    `Follow-up:;${followupCount};Odmietnuté:;${rejectedCount};Zostáva:;${total - contacted};;;;;;;;;`,
+    ";;;;;;;;;;;;;;"
+  ];
 
   const headers = [
     "Poradie",
@@ -429,19 +645,12 @@ function exportLeadsToCsv() {
     "Google Mapy"
   ];
 
-  let totalSoldPieces = 0;
-  let totalRevenue = 0;
-
   const rows = leads.map((lead, idx) => {
-    normalizeLead(lead);
     const gap = calculateReviewGap(lead.totalScore, lead.reviewsCount);
     const gapText = gap.type === "need_more" ? `+${gap.needed} ks (5★)` : `Ochrana (min. ${gap.dropReviews} ks 1★)`;
 
-    const soldCount = lead.crmStatus === "sold" ? (Number(lead.soldCount) || 1) : 0;
-    const rev = lead.crmStatus === "sold" ? (Number(lead.revenue) || 0) : 0;
-
-    totalSoldPieces += soldCount;
-    totalRevenue += rev;
+    const soldCountStr = lead.crmStatus === "sold" ? (lead.soldCount || 1) : "";
+    const revStr = lead.crmStatus === "sold" ? (lead.revenue || 0) : "";
 
     const gmapsUrl = lead.location ? `https://www.google.com/maps/search/?api=1&query=${lead.location.lat},${lead.location.lng}` : "";
 
@@ -449,15 +658,15 @@ function exportLeadsToCsv() {
       idx + 1,
       csvEscape(lead.title || ""),
       csvEscape(lead.categoryName || lead.searchString || ""),
-      csvEscape(statusLabels[lead.crmStatus] || "Neoslovené"),
-      soldCount,
-      rev,
+      csvEscape(statusLabels[lead.crmStatus] || "⚪ Neoslovené"),
+      soldCountStr,
+      revStr,
       csvEscape(lead.note || ""),
       csvEscape(lead.phone || ""),
       csvEscape(lead.address || ""),
       csvEscape(lead.city || city),
-      lead.totalScore || 0,
-      lead.reviewsCount || 0,
+      lead.totalScore || "",
+      lead.reviewsCount || "",
       csvEscape(gapText),
       csvEscape(lead.website || ""),
       csvEscape(lead.url || gmapsUrl)
@@ -469,8 +678,8 @@ function exportLeadsToCsv() {
     "SPOLU",
     "",
     "",
-    totalSoldPieces,
-    totalRevenue,
+    soldPieces,
+    revenue,
     "",
     "",
     "",
@@ -482,14 +691,14 @@ function exportLeadsToCsv() {
     ""
   ].join(";");
 
-  const csvContent = [headers.join(";"), ...rows, summaryRow].join("\r\n");
+  const csvContent = [...summaryTop, headers.join(";"), ...rows, summaryRow].join("\r\n");
 
   const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   const safeCity = city.toLowerCase().replace(/[^a-z0-9]/gi, "_");
-  a.download = `nfc_leady_${safeCity}_${dateStr}.csv`;
+  a.download = `nfc_leady_${safeCity}_${isoDate}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -500,7 +709,7 @@ function exportLeadsToCsv() {
     exportCsvBtn.textContent = "✓ Stiahnuté!";
     setTimeout(() => { exportCsvBtn.textContent = orig; }, 2000);
   }
-  setStatus(`CSV tabuľka pre ${city} bola stiahnutá (${leads.length} podnikov, tržba ${totalRevenue} €).`);
+  setStatus(`Prehľadná CSV tabuľka pre ${city} bola stiahnutá (${leads.length} podnikov, tržba ${revenue} €).`);
 }
 
 async function shareDailySummary() {
@@ -1060,7 +1269,10 @@ if (findButton) {
   });
 }
 
-// Listenery pre Bod 5: Export CSV, Zdieľanie a Zálohovanie
+// Listenery pre Bod 5: Export CSV, Excel, Zdieľanie a Zálohovanie
+if (exportExcelBtn) {
+  exportExcelBtn.addEventListener("click", exportLeadsToExcel);
+}
 if (exportCsvBtn) {
   exportCsvBtn.addEventListener("click", exportLeadsToCsv);
 }
@@ -1095,5 +1307,5 @@ async function bootstrap() {
 bootstrap();
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js?v=7");
+  navigator.serviceWorker.register("sw.js?v=8");
 }

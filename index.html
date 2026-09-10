@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=7" />
+    <link rel="stylesheet" href="styles.css?v=8" />
     <title>NFC Leady</title>
   </head>
   <body>
@@ -132,11 +132,14 @@
 
         <!-- Nástrojová lišta: Export & Zdieľanie -->
         <div id="crmToolbar" class="crm-toolbar">
-          <button id="exportCsvBtn" class="crm-tool-btn export-btn" type="button" title="Stiahnuť tabuľku pre Excel (CSV)">
-            📊 Export CSV (Excel)
+          <button id="exportExcelBtn" class="crm-tool-btn export-btn" type="button" title="Stiahnuť naformátovanú farebnú tabuľku pre Excel (.xls)">
+            📊 Farebný Excel
+          </button>
+          <button id="exportCsvBtn" class="crm-tool-btn csv-btn" type="button" title="Stiahnuť prehľadnú CSV tabuľku">
+            📄 CSV
           </button>
           <button id="shareSummaryBtn" class="crm-tool-btn share-btn" type="button" title="Zdieľať alebo skopírovať sumár dňa">
-            📤 Zdieľať sumár dňa
+            📤 Zdieľať
           </button>
         </div>
 
@@ -159,6 +162,6 @@
         </div>
       </section>
     </main>
-    <script src="app.js?v=7"></script>
+    <script src="app.js?v=8"></script>
   </body>
 </html>
