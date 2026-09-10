@@ -512,7 +512,7 @@ function normalizeLead(lead) {
     lead.crmStatus = lead.done ? "sold" : "new";
   }
   lead.soldCount = Number(lead.soldCount || (lead.crmStatus === "sold" ? 1 : 0));
-  lead.revenue = Number(lead.revenue || (lead.crmStatus === "sold" ? 30 : 0));
+  lead.revenue = Number(lead.revenue || (lead.crmStatus === "sold" ? 29 : 0));
   lead.note = lead.note || "";
   return lead;
 }
@@ -554,7 +554,7 @@ function setLeadStatus(index, newStatus) {
     lead.done = newStatus === "sold";
     if (newStatus === "sold" && (!lead.soldCount || lead.soldCount <= 0)) {
       lead.soldCount = 1;
-      lead.revenue = 30;
+      lead.revenue = 29;
     }
   }
   saveLeadsToStorage(currentRouteData.start, currentRouteData.leads, currentRouteData.city, currentRouteData.savedAt);
@@ -1141,7 +1141,7 @@ function renderLeadList(leads) {
         : lead.url || "#";
 
       let statusBadgeText = "⚪ Neoslovené";
-      if (st === "sold") statusBadgeText = `🟢 Predané: ${lead.soldCount || 1} ks · ${lead.revenue || 30} €`;
+      if (st === "sold") statusBadgeText = `🟢 Predané: ${lead.soldCount || 1} ks · ${lead.revenue || 29} €`;
       else if (st === "followup") statusBadgeText = "🟡 Záujem / Zavolať neskôr";
       else if (st === "rejected") statusBadgeText = "🔴 Odmietnuté";
       else if (st === "closed") statusBadgeText = "⚪ Zatvorené / Neexistuje";
@@ -1191,7 +1191,7 @@ function renderLeadList(leads) {
                 ? `
               <div class="sold-details-row">
                 <label>Kusov: <input type="number" min="1" max="99" value="${lead.soldCount || 1}" oninput="updateSoldDetails(${idx}, this.value, document.getElementById('rev-${idx}').value)" /></label>
-                <label>Tržba €: <input id="rev-${idx}" type="number" min="0" step="5" value="${lead.revenue || 30}" oninput="updateSoldDetails(${idx}, ${lead.soldCount || 1}, this.value)" /></label>
+                <label>Tržba €: <input id="rev-${idx}" type="number" min="0" step="5" value="${lead.revenue || 29}" oninput="updateSoldDetails(${idx}, ${lead.soldCount || 1}, this.value)" /></label>
               </div>
             `
                 : ""
@@ -1508,5 +1508,5 @@ async function bootstrap() {
 bootstrap();
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js?v=13");
+  navigator.serviceWorker.register("sw.js?v=14");
 }
