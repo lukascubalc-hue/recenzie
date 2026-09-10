@@ -1,4 +1,4 @@
-const CACHE = "nfc-leads-v15";
+const CACHE = "nfc-leads-v16";
 const PRECACHE_ASSETS = [
   "./",
   "./index.html",
@@ -7,6 +7,7 @@ const PRECACHE_ASSETS = [
   "./landing.js",
   "./styles.css",
   "./app.js",
+  "./nfc-tap-hand.jpg",
   "./manifest.webmanifest",
   "./icon.svg",
   "./icon-192.png",

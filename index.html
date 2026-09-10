@@ -9,7 +9,7 @@
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="landing.css?v=15" />
+    <link rel="stylesheet" href="landing.css?v=16" />
     <title>RecenzieĽahko.sk – Viac 5★ Google recenzií jedným dotykom</title>
   </head>
   <body>
@@ -101,60 +101,26 @@
               <button id="closeDemoBtn" class="demo-popup-close-btn" type="button">✕ Zavrieť ukážku</button>
             </div>
 
-            <!-- Animated 3D NFC Tap Stage Visual -->
+            <!-- Interactive 3D NFC Tap Stage Visual -->
             <div class="nfc-tap-stage" id="nfcTapStage">
-              <!-- NFC Signal Waves (Emitted from the card) -->
-              <div class="nfc-signal-waves" aria-hidden="true">
-                <div class="wave-ring ring-1"></div>
-                <div class="wave-ring ring-2"></div>
-                <div class="wave-ring ring-3"></div>
-              </div>
+              <div class="nfc-stage-media-wrap" id="nfcMediaWrap" title="Kliknite pre vyskúšanie priloženia">
+                <img src="nfc-tap-hand.jpg" alt="Ruka prikladá telefón k NFC stojančeku na Google recenzie" class="nfc-tap-image" id="nfcTapImg" loading="eager" />
 
-              <!-- Haptic Beam Indicator -->
-              <div class="nfc-haptic-beam">
-                <span>⚡ Okamžitý NFC kontakt (1,2s)</span>
-              </div>
+                <!-- Dynamic Animated NFC Wave Rings Overlay -->
+                <div class="nfc-wave-overlay" aria-hidden="true">
+                  <div class="wave-ring ring-1"></div>
+                  <div class="wave-ring ring-2"></div>
+                  <div class="wave-ring ring-3"></div>
+                </div>
 
-              <!-- Smartphone Floating & Tapping -->
-              <div class="phone-mockup" id="phoneMockup">
-                <div class="phone-speaker-notch">
-                  <div class="phone-camera"></div>
+                <!-- Floating Interactive Badges -->
+                <div class="nfc-haptic-beam">
+                  <span>⚡ Okamžitý NFC kontakt (1,2s)</span>
                 </div>
-                <div class="phone-screen">
-                  <div class="phone-screen-header">
-                    <span class="phone-gmaps-badge">📍 Google Mapy</span>
-                    <span>100%</span>
-                  </div>
-                  <div class="phone-review-card">
-                    <div class="phone-biz-name">Kaviareň & Bistro Radnica</div>
-                    <div class="phone-stars-row">★★★★★</div>
-                    <div class="phone-review-tip">„Skvelá káva, milý personál!“</div>
-                    <span class="phone-action-pill">✓ Hodnotenie odoslané</span>
-                  </div>
-                </div>
-              </div>
 
-              <!-- NFC Card / Tag on Desk -->
-              <div class="nfc-card-mockup" id="nfcCardMockup">
-                <div class="card-top-row">
-                  <div class="stand-google-logo">
-                    <span>G</span><span>o</span><span>o</span><span>g</span><span>l</span><span>e</span>
-                  </div>
-                  <span class="card-chip-badge">NFC TAG</span>
-                </div>
-                <div class="card-center-nfc">
-                  <div class="card-nfc-icon">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M8.5 7.5a6 6 0 0 1 0 9"/>
-                      <path d="M5 4.5a10.5 10.5 0 0 1 0 15"/>
-                      <path d="M12 10.5a2 2 0 0 1 0 3"/>
-                    </svg>
-                  </div>
-                  <span class="card-tap-text">PRILOŽTE TELEFÓN</span>
-                </div>
-                <div class="card-bottom-row">
-                  <span class="card-stars">★★★★★</span>
-                  <span class="card-review-sub">Google Recenzie</span>
+                <div class="nfc-floating-review-badge">
+                  <div class="nfc-badge-stars">★★★★★</div>
+                  <div class="nfc-badge-label">100% automatické</div>
                 </div>
               </div>
             </div>
@@ -163,7 +129,7 @@
               📱 Kliknite sem a vyskúšajte simuláciu priloženia
             </button>
             <p class="hint" style="margin-top: 10px; color: #64748b; font-size: 0.78rem;">
-              Inteligentné NFC kartičky a nálepky s okamžitým načítaním Google recenzií.
+              Reálna ukážka: Hosť len priloží mobil k stojančeku alebo nálepke.
             </p>
           </div>
         </div>
@@ -549,6 +515,6 @@
     </div>
 
     <!-- Script -->
-    <script src="landing.js?v=15"></script>
+    <script src="landing.js?v=16"></script>
   </body>
 </html>

@@ -197,31 +197,28 @@ document.addEventListener("DOMContentLoaded", () => {
   // 2. Interaktívna simulácia priloženia smartfónu
   // ----------------------------------------------------
   const triggerDemoBtn = document.getElementById("triggerDemoBtn");
-  const phoneMockup = document.getElementById("phoneMockup");
+  const nfcMediaWrap = document.getElementById("nfcMediaWrap");
   const demoPopup = document.getElementById("demoPopup");
   const closeDemoBtn = document.getElementById("closeDemoBtn");
 
-  if (triggerDemoBtn) {
-    triggerDemoBtn.addEventListener("click", () => {
-      if (phoneMockup) {
-        // Zastaviť bežnú slučku, vykonať dynamické 3D priloženie k NFC karte
-        phoneMockup.style.animation = "none";
-        phoneMockup.style.transition = "transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
-        phoneMockup.style.transform = "perspective(800px) rotateX(14deg) translateY(75px) scale(1.05)";
-
+  function playTapSimulation() {
+    if (nfcMediaWrap) {
+      nfcMediaWrap.style.transition = "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
+      nfcMediaWrap.style.transform = "scale(0.965)";
+      setTimeout(() => {
+        nfcMediaWrap.style.transform = "";
         setTimeout(() => {
+          nfcMediaWrap.style.transition = "";
           if (demoPopup) demoPopup.classList.remove("hidden");
-          setTimeout(() => {
-            phoneMockup.style.transform = "";
-            phoneMockup.style.transition = "";
-            phoneMockup.style.animation = "";
-          }, 800);
-        }, 320);
-      } else if (demoPopup) {
-        demoPopup.classList.remove("hidden");
-      }
-    });
+        }, 150);
+      }, 160);
+    } else if (demoPopup) {
+      demoPopup.classList.remove("hidden");
+    }
   }
+
+  if (triggerDemoBtn) triggerDemoBtn.addEventListener("click", playTapSimulation);
+  if (nfcMediaWrap) nfcMediaWrap.addEventListener("click", playTapSimulation);
 
   if (closeDemoBtn && demoPopup) {
     closeDemoBtn.addEventListener("click", () => {
