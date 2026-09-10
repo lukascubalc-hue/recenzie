@@ -274,6 +274,58 @@ button:active {
   white-space: nowrap;
 }
 
+/* Mini-CRM Dashboard */
+.crm-dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+.crm-stat-card {
+  background: #ffffff;
+  border: 1.5px solid #d7e4da;
+  border-radius: 14px;
+  padding: 10px 6px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(18, 55, 42, 0.04);
+}
+
+.crm-stat-card.highlight-sold {
+  border-color: #a3d9b4;
+  background: #f2faf4;
+}
+
+.crm-stat-card.highlight-revenue {
+  border-color: #f7d58a;
+  background: #fffdf5;
+}
+
+.crm-stat-card .stat-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #556c5d;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 2px;
+}
+
+.crm-stat-card .stat-value {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 850;
+  color: #12372a;
+}
+
+.crm-stat-card.highlight-sold .stat-value {
+  color: #166534;
+}
+
+.crm-stat-card.highlight-revenue .stat-value {
+  color: #92400e;
+}
+
 /* Filter tabs */
 .leads-filter-tabs {
   display: flex;
@@ -283,16 +335,19 @@ button:active {
   border-radius: 12px;
   margin: 8px 0 14px;
   width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .filter-tab {
-  flex: 1;
+  flex: 1 0 auto;
+  min-width: 62px;
   background: transparent;
   color: #3b5645;
   border: 0;
   border-radius: 9px;
-  padding: 8px 4px;
-  font-size: 0.8rem;
+  padding: 8px 6px;
+  font-size: 0.76rem;
   font-weight: 750;
   cursor: pointer;
   text-align: center;
@@ -455,18 +510,185 @@ button:active {
   flex: 1 1 auto;
 }
 
-.btn-toggle-done {
-  background: #f1f6f2;
-  color: #275239;
-  border: 1px solid #c7d8cb;
-  padding: 9px 12px;
-  flex: 1 1 auto;
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 99px;
+  margin-bottom: 6px;
+}
+.status-badge.new { background: #f1f5f2; color: #4b6654; }
+.status-badge.sold { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.status-badge.followup { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.status-badge.rejected { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+.status-badge.closed { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+.crm-status-picker {
+  display: flex;
+  gap: 5px;
+  margin: 10px 0 6px;
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
-.lead.done .btn-toggle-done {
-  background: #275239;
-  color: #ffffff;
-  border-color: #275239;
+.crm-status-btn {
+  flex: 1 0 auto;
+  padding: 7px 8px;
+  font-size: 0.74rem;
+  font-weight: 750;
+  border-radius: 8px;
+  border: 1px solid #cadcd0;
+  background: #f7faf8;
+  color: #3b5645;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.crm-status-btn:active { transform: scale(0.97); }
+.crm-status-btn.active.btn-sold { background: #15803d; color: #fff; border-color: #15803d; }
+.crm-status-btn.active.btn-followup { background: #d97706; color: #fff; border-color: #d97706; }
+.crm-status-btn.active.btn-rejected { background: #dc2626; color: #fff; border-color: #dc2626; }
+.crm-status-btn.active.btn-closed { background: #64748b; color: #fff; border-color: #64748b; }
+
+.sold-details-row {
+  display: flex;
+  gap: 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin: 6px 0 8px;
+  align-items: center;
+}
+
+.sold-details-row label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.76rem;
+  font-weight: 750;
+  color: #166534;
+  margin: 0;
+  flex: 1;
+}
+
+.sold-details-row input {
+  width: 65px;
+  padding: 6px 8px;
+  margin: 0 !important;
+  border-radius: 6px;
+  border: 1px solid #86efac;
+  font-size: 0.85rem;
+  text-align: center;
+  background: #fff;
+}
+
+.crm-note-row {
+  margin: 6px 0 8px;
+  width: 100%;
+}
+
+.lead-note-input {
+  width: 100%;
+  margin-bottom: 0 !important;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  border: 1.5px solid #d4dfd7;
+  background: #fcfdfc;
+  color: #1f2937;
+}
+
+.lead-note-input:focus {
+  background: #ffffff;
+  border-color: #12372a;
+}
+
+/* Predajný asistent & kalkulačka */
+.btn-pitch {
+  background: #fffbeb;
+  color: #92400e !important;
+  border: 1px solid #fde68a;
+  width: 100%;
+  margin-top: 6px;
+  padding: 9px 12px;
+  font-size: 0.8rem;
+}
+
+.btn-pitch:hover {
+  background: #fef3c7;
+}
+
+.pitch-drawer {
+  background: #fffdf5;
+  border: 1.5px solid #fcd34d;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 8px;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.08);
+}
+
+.pitch-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+  background: #fff;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.pitch-metric-title {
+  display: block;
+  font-size: 0.65rem;
+  color: #78350f;
+  text-transform: uppercase;
+  font-weight: 750;
+}
+
+.pitch-metric-val {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 850;
+  color: #92400e;
+}
+
+.pitch-speech-bubble {
+  background: #ffffff;
+  border: 1px solid #fed7aa;
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #451a03;
+}
+
+.pitch-speech-bubble strong {
+  color: #9a3412;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.copy-pitch-btn {
+  margin-top: 8px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  padding: 6px 10px;
+  font-size: 0.74rem;
+  border-radius: 6px;
+  font-weight: 750;
+  cursor: pointer;
 }
 
 .empty-state {

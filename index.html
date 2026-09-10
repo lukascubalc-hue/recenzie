@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=5" />
+    <link rel="stylesheet" href="styles.css?v=6" />
     <title>NFC Leady</title>
   </head>
   <body>
@@ -101,11 +101,29 @@
           </div>
         </div>
 
+        <!-- Mini-CRM Denný sumár -->
+        <div id="crmDashboard" class="crm-dashboard">
+          <div class="crm-stat-card">
+            <span class="stat-label">Oslovené</span>
+            <span id="statContacted" class="stat-value">0 / 0</span>
+          </div>
+          <div class="crm-stat-card highlight-sold">
+            <span class="stat-label">Predané</span>
+            <span id="statSoldPieces" class="stat-value">0 ks</span>
+          </div>
+          <div class="crm-stat-card highlight-revenue">
+            <span class="stat-label">Tržba</span>
+            <span id="statRevenue" class="stat-value">0 €</span>
+          </div>
+        </div>
+
         <!-- Filtre leadov v teréne -->
         <div class="leads-filter-tabs">
           <button id="filterAll" class="filter-tab active" type="button">Všetky (<span id="allCount">0</span>)</button>
-          <button id="filterPending" class="filter-tab" type="button">Nevybavené (<span id="pendingCount">0</span>)</button>
-          <button id="filterDone" class="filter-tab" type="button">Vybavené (<span id="doneCount">0</span>)</button>
+          <button id="filterNew" class="filter-tab" type="button">Nové (<span id="newCount">0</span>)</button>
+          <button id="filterSold" class="filter-tab" type="button">🟢 Predané (<span id="soldCountBadge">0</span>)</button>
+          <button id="filterFollowup" class="filter-tab" type="button">🟡 Neskôr (<span id="followupCount">0</span>)</button>
+          <button id="filterRejected" class="filter-tab" type="button">🔴 Nie (<span id="rejectedCount">0</span>)</button>
         </div>
 
         <div id="routeLinks" class="route-links"></div>
@@ -118,6 +136,6 @@
         </div>
       </section>
     </main>
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=6"></script>
   </body>
 </html>

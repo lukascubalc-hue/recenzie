@@ -216,6 +216,9 @@ async function geocode(address) {
   if (userGpsCoords && (address.includes("Moja poloha") || address.includes("GPS"))) {
     return userGpsCoords;
   }
+  if (address === "Hlavná 12, Trnava" || address.trim() === "Trnava") {
+    return { lat: 48.3775, lng: 17.5883 };
+  }
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2500);
@@ -276,7 +279,8 @@ function clearSavedLeads() {
   $("leadCount").textContent = "0 leadov";
   if ($("clearLeads")) $("clearLeads").classList.add("hidden");
   if ($("savedAtInfo")) $("savedAtInfo").textContent = "";
-  updateFilterCounters(0, 0, 0);
+  updateFilterCounters([]);
+  renderSummaryStats([]);
   $("leadList").innerHTML = `
     <div id="emptyState" class="empty-state">
       <p>📭 Zatiaľ nie sú načítané žiadne leady.</p>
@@ -295,28 +299,145 @@ if (clearLeadsButton) {
 }
 
 // ----------------------------------------------------
-// Označovanie vybavených leadov & Filtrovanie
+// Mini-CRM Dátový model & Funkcie
 // ----------------------------------------------------
-function toggleLeadDone(index) {
+function normalizeLead(lead) {
+  if (!lead.crmStatus) {
+    lead.crmStatus = lead.done ? "sold" : "new";
+  }
+  lead.soldCount = Number(lead.soldCount || (lead.crmStatus === "sold" ? 1 : 0));
+  lead.revenue = Number(lead.revenue || (lead.crmStatus === "sold" ? 30 : 0));
+  lead.note = lead.note || "";
+  return lead;
+}
+
+function renderSummaryStats(leads) {
+  leads.forEach(normalizeLead);
+  const contacted = leads.filter((l) => l.crmStatus && l.crmStatus !== "new").length;
+  const soldPieces = leads.reduce((acc, l) => acc + (l.crmStatus === "sold" ? Number(l.soldCount) || 1 : 0), 0);
+  const revenue = leads.reduce((acc, l) => acc + (l.crmStatus === "sold" ? Number(l.revenue) || 0 : 0), 0);
+
+  if ($("statContacted")) $("statContacted").textContent = `${contacted} / ${leads.length}`;
+  if ($("statSoldPieces")) $("statSoldPieces").textContent = `${soldPieces} ks`;
+  if ($("statRevenue")) $("statRevenue").textContent = `${revenue} €`;
+}
+
+function updateFilterCounters(leads) {
+  leads.forEach(normalizeLead);
+  const all = leads.length;
+  const newCount = leads.filter((l) => (l.crmStatus || "new") === "new").length;
+  const soldCount = leads.filter((l) => l.crmStatus === "sold").length;
+  const followupCount = leads.filter((l) => l.crmStatus === "followup").length;
+  const rejectedCount = leads.filter((l) => l.crmStatus === "rejected").length;
+
+  if ($("allCount")) $("allCount").textContent = all;
+  if ($("newCount")) $("newCount").textContent = newCount;
+  if ($("soldCountBadge")) $("soldCountBadge").textContent = soldCount;
+  if ($("followupCount")) $("followupCount").textContent = followupCount;
+  if ($("rejectedCount")) $("rejectedCount").textContent = rejectedCount;
+}
+
+function setLeadStatus(index, newStatus) {
   if (!currentRouteData || !currentRouteData.leads[index]) return;
-  currentRouteData.leads[index].done = !currentRouteData.leads[index].done;
+  const lead = currentRouteData.leads[index];
+  if (lead.crmStatus === newStatus) {
+    lead.crmStatus = "new";
+    lead.done = false;
+  } else {
+    lead.crmStatus = newStatus;
+    lead.done = newStatus === "sold";
+    if (newStatus === "sold" && (!lead.soldCount || lead.soldCount <= 0)) {
+      lead.soldCount = 1;
+      lead.revenue = 30;
+    }
+  }
   saveLeadsToStorage(currentRouteData.start, currentRouteData.leads, currentRouteData.city, currentRouteData.savedAt);
-  render(currentRouteData.start, currentRouteData.leads, currentRouteData.city, currentRouteData.savedAt);
+  renderSummaryStats(currentRouteData.leads);
+  renderLeadList(currentRouteData.leads);
 }
-window.toggleLeadDone = toggleLeadDone;
+window.setLeadStatus = setLeadStatus;
 
-function updateFilterCounters(allCount, pendingCount, doneCount) {
-  if ($("allCount")) $("allCount").textContent = allCount;
-  if ($("pendingCount")) $("pendingCount").textContent = pendingCount;
-  if ($("doneCount")) $("doneCount").textContent = doneCount;
+function updateSoldDetails(index, count, rev) {
+  if (!currentRouteData || !currentRouteData.leads[index]) return;
+  const lead = currentRouteData.leads[index];
+  lead.soldCount = Math.max(1, Number(count) || 1);
+  lead.revenue = Math.max(0, Number(rev) || 0);
+  saveLeadsToStorage(currentRouteData.start, currentRouteData.leads, currentRouteData.city, currentRouteData.savedAt);
+  renderSummaryStats(currentRouteData.leads);
+  const badge = document.getElementById(`status-badge-${index}`);
+  if (badge) {
+    badge.textContent = `🟢 Predané: ${lead.soldCount} ks · ${lead.revenue} €`;
+  }
+}
+window.updateSoldDetails = updateSoldDetails;
+
+function saveLeadNote(index, noteText) {
+  if (!currentRouteData || !currentRouteData.leads[index]) return;
+  currentRouteData.leads[index].note = noteText.trim();
+  saveLeadsToStorage(currentRouteData.start, currentRouteData.leads, currentRouteData.city, currentRouteData.savedAt);
+}
+window.saveLeadNote = saveLeadNote;
+
+// ----------------------------------------------------
+// Predajný asistent & Kalkulačka recenzií
+// ----------------------------------------------------
+function calculateReviewGap(currentScore, reviewsCount, targetScore = 4.8) {
+  const score = Number(currentScore) || 0;
+  const count = Number(reviewsCount) || 0;
+  if (score <= 0 || count <= 0) {
+    return { type: "need_more", needed: 15, targetScore: 4.8 };
+  }
+  if (score < targetScore) {
+    const needed = Math.max(1, Math.ceil(((targetScore - score) * count) / (5 - targetScore)));
+    return { type: "need_more", needed, targetScore };
+  } else {
+    const dropReviews = Math.max(1, Math.ceil(((score - 4.5) * count) / 3.5));
+    return { type: "protect", dropReviews, targetScore: 4.5 };
+  }
 }
 
-// Obsluha prepínania filtrov
+function generateSalesPitch(lead, gap) {
+  const cat = lead.categoryName || lead.searchString || "prevádzku";
+  const title = lead.title || "váš podnik";
+  const score = Number(lead.totalScore) || 4.2;
+  const count = Number(lead.reviewsCount) || 15;
+
+  if (gap.type === "need_more") {
+    return `„Dobrý deň! Vidím, že máte skvelý ${cat} a spokojných hostí (${score}★), ale na Google Mapách máte zatiaľ iba ${count} recenzií. Aby ste dosiahli ideálne skóre ${gap.targetScore}★ a predbehli konkurenciu v okolí, potrebujete získať ešte približne ${gap.needed} nových 5-hviezdičkových recenzií. Náš NFC stojanček na pult to vyrieši – hosť len priloží mobil a za 3 sekundy vám nechá 5 hviezdičiek skôr, ako odíde.“`;
+  } else {
+    return `„Dobrý deň! Gratulujem k perfektnému hodnoteniu ${score}★ v ${title}. Pri ${count} recenziách však stačí len ${gap.dropReviews} negatívne hodnotenie od nahnevaného človeka a vaše skóre spadne pod ${gap.targetScore}★. Náš NFC stojanček vám slúži ako ochranný štít – systematicky zbiera recenzie od stoviek spokojných zákazníkov, takže vám žiadna zlá recenzia nepokazí reputáciu.“`;
+  }
+}
+
+function togglePitchDrawer(index) {
+  const el = document.getElementById(`pitch-drawer-${index}`);
+  if (el) el.classList.toggle("hidden");
+}
+window.togglePitchDrawer = togglePitchDrawer;
+
+function copyPitchText(index, btn) {
+  const pitchTextEl = document.getElementById(`pitch-text-${index}`);
+  if (!pitchTextEl) return;
+  navigator.clipboard.writeText(pitchTextEl.textContent).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = "✓ Skopírované do schránky!";
+    setTimeout(() => {
+      btn.textContent = orig;
+    }, 2500);
+  });
+}
+window.copyPitchText = copyPitchText;
+
+// ----------------------------------------------------
+// Filtrovanie a vykreslenie zoznamu
+// ----------------------------------------------------
 function setupFilterTabs() {
   const tabs = [
     { id: "filterAll", mode: "all" },
-    { id: "filterPending", mode: "pending" },
-    { id: "filterDone", mode: "done" }
+    { id: "filterNew", mode: "new" },
+    { id: "filterSold", mode: "sold" },
+    { id: "filterFollowup", mode: "followup" },
+    { id: "filterRejected", mode: "rejected" }
   ];
 
   tabs.forEach((tab) => {
@@ -338,51 +459,63 @@ function renderLeadList(leads) {
   const container = $("leadList");
   if (!container) return;
 
-  const totalCount = leads.length;
-  const doneCount = leads.filter((x) => x.done).length;
-  const pendingCount = totalCount - doneCount;
-
-  updateFilterCounters(totalCount, pendingCount, doneCount);
+  leads.forEach(normalizeLead);
+  updateFilterCounters(leads);
+  renderSummaryStats(leads);
 
   let filteredIndices = leads
     .map((lead, idx) => ({ lead, idx }))
     .filter(({ lead }) => {
-      if (currentFilter === "pending") return !lead.done;
-      if (currentFilter === "done") return lead.done;
+      const st = lead.crmStatus || "new";
+      if (currentFilter === "new") return st === "new";
+      if (currentFilter === "sold") return st === "sold";
+      if (currentFilter === "followup") return st === "followup";
+      if (currentFilter === "rejected") return st === "rejected";
       return true;
     });
 
   if (!filteredIndices.length) {
     let emptyMsg = "V tejto kategórii sa nenachádzajú žiadne leady.";
-    if (currentFilter === "pending") emptyMsg = "🎉 Všetky leady sú vybavené!";
-    else if (currentFilter === "done") emptyMsg = "Zatiaľ nie je vybavený žiaden podnik.";
-    container.innerHTML = `
-      <div class="empty-state">
-        <p>${emptyMsg}</p>
-      </div>
-    `;
+    if (currentFilter === "sold") emptyMsg = "Zatiaľ nebol zaznamenaný žiaden predaj.";
+    else if (currentFilter === "followup") emptyMsg = "Žiadne odložené kontakty.";
+    else if (currentFilter === "rejected") emptyMsg = "Žiadne odmietnuté leady.";
+    container.innerHTML = `<div class="empty-state"><p>${emptyMsg}</p></div>`;
     return;
   }
 
   container.innerHTML = filteredIndices
     .map(({ lead, idx }) => {
-      const isDone = Boolean(lead.done);
+      const st = lead.crmStatus || "new";
+      const isSold = st === "sold";
       const phoneDigits = (lead.phone || "").replace(/[^0-9+]/g, "");
       const navUrl = lead.location
         ? `https://www.google.com/maps/dir/?api=1&destination=${lead.location.lat},${lead.location.lng}`
         : lead.url || "#";
 
+      let statusBadgeText = "⚪ Neoslovené";
+      if (st === "sold") statusBadgeText = `🟢 Predané: ${lead.soldCount || 1} ks · ${lead.revenue || 30} €`;
+      else if (st === "followup") statusBadgeText = "🟡 Záujem / Zavolať neskôr";
+      else if (st === "rejected") statusBadgeText = "🔴 Odmietnuté";
+      else if (st === "closed") statusBadgeText = "⚪ Zatvorené / Neexistuje";
+
+      const gap = calculateReviewGap(lead.totalScore, lead.reviewsCount);
+      const pitch = generateSalesPitch(lead, gap);
+
       return `
-        <article class="lead ${isDone ? "done" : ""}" id="lead-${idx}">
+        <article class="lead ${isSold ? "done" : ""}" id="lead-${idx}">
           <div class="order">${idx + 1}</div>
           <div>
             <div class="lead-header">
-              <h3>${lead.title || "Bez názvu"}</h3>
+              <div>
+                <span id="status-badge-${idx}" class="status-badge ${st}">${statusBadgeText}</span>
+                <h3>${lead.title || "Bez názvu"}</h3>
+              </div>
             </div>
             <p class="meta">
               <span class="meta-rating">★ ${lead.totalScore || "–"}</span> · ${lead.reviewsCount || 0} recenzií · ${lead.categoryName || lead.searchString || "Podnik"}
             </p>
             <p class="meta">${lead.address || ""}</p>
+
             <div class="lead-actions-row">
               ${
                 phoneDigits
@@ -395,9 +528,57 @@ function renderLeadList(leads) {
                   ? `<a href="${lead.website}" target="_blank" rel="noopener" class="action-btn btn-web" title="Navštíviť web">🌐 Web</a>`
                   : ""
               }
-              <button type="button" class="action-btn btn-toggle-done" onclick="toggleLeadDone(${idx})">
-                ${isDone ? "✓ Vybavené" : "Označiť"}
-              </button>
+            </div>
+
+            <!-- Mini-CRM Stavy -->
+            <div class="crm-status-picker">
+              <button type="button" class="crm-status-btn btn-sold ${st === "sold" ? "active" : ""}" onclick="setLeadStatus(${idx}, 'sold')">🟢 Predané</button>
+              <button type="button" class="crm-status-btn btn-followup ${st === "followup" ? "active" : ""}" onclick="setLeadStatus(${idx}, 'followup')">🟡 Neskôr</button>
+              <button type="button" class="crm-status-btn btn-rejected ${st === "rejected" ? "active" : ""}" onclick="setLeadStatus(${idx}, 'rejected')">🔴 Nie</button>
+              <button type="button" class="crm-status-btn btn-closed ${st === "closed" ? "active" : ""}" onclick="setLeadStatus(${idx}, 'closed')">⚪ Zavreté</button>
+            </div>
+
+            ${
+              isSold
+                ? `
+              <div class="sold-details-row">
+                <label>Kusov: <input type="number" min="1" max="99" value="${lead.soldCount || 1}" oninput="updateSoldDetails(${idx}, this.value, document.getElementById('rev-${idx}').value)" /></label>
+                <label>Tržba €: <input id="rev-${idx}" type="number" min="0" step="5" value="${lead.revenue || 30}" oninput="updateSoldDetails(${idx}, ${lead.soldCount || 1}, this.value)" /></label>
+              </div>
+            `
+                : ""
+            }
+
+            <!-- Poznámka -->
+            <div class="crm-note-row">
+              <input type="text" class="lead-note-input" value="${(lead.note || "").replace(/"/g, "&quot;")}" placeholder="✍️ Pridať poznámku (napr. majiteľ príde o 14:00)..." onchange="saveLeadNote(${idx}, this.value)" />
+            </div>
+
+            <!-- Predajný asistent & Kalkulačka -->
+            <button type="button" class="action-btn btn-pitch" onclick="togglePitchDrawer(${idx})">
+              💡 Predajný pitch & kalkulačka ▾
+            </button>
+
+            <div id="pitch-drawer-${idx}" class="pitch-drawer hidden">
+              <div class="pitch-metrics">
+                <div>
+                  <span class="pitch-metric-title">Hodnotenie</span>
+                  <span class="pitch-metric-val">★ ${lead.totalScore || "–"}</span>
+                </div>
+                <div>
+                  <span class="pitch-metric-title">Recenzií</span>
+                  <span class="pitch-metric-val">${lead.reviewsCount || 0}</span>
+                </div>
+                <div>
+                  <span class="pitch-metric-title">${gap.type === "need_more" ? "Cieľ 4.8★" : "Ochranný limit"}</span>
+                  <span class="pitch-metric-val">${gap.type === "need_more" ? `+${gap.needed} päť★` : `Štít`}</span>
+                </div>
+              </div>
+              <div class="pitch-speech-bubble">
+                <strong>🎤 Čo povedať majiteľovi na prevádzke:</strong>
+                <p id="pitch-text-${idx}" style="margin:0 0 8px;">${pitch}</p>
+                <button type="button" class="copy-pitch-btn" onclick="copyPitchText(${idx}, this)">📋 Skopírovať rozhovor</button>
+              </div>
             </div>
           </div>
         </article>
@@ -410,11 +591,12 @@ function renderLeadList(leads) {
 // Vykreslenie celej trasy a zoznamu
 // ----------------------------------------------------
 function render(start, leads, city, savedAt) {
+  leads.forEach(normalizeLead);
   currentRouteData = { start, leads, city, savedAt: savedAt || new Date().toISOString() };
   $("resultTitle").textContent = `Trasa: ${city}`;
 
-  const doneCount = leads.filter((x) => x.done).length;
-  $("leadCount").textContent = doneCount > 0 ? `${doneCount}/${leads.length} vybavené` : `${leads.length} leadov`;
+  const soldCount = leads.filter((x) => x.crmStatus === "sold").length;
+  $("leadCount").textContent = soldCount > 0 ? `${soldCount}/${leads.length} predané` : `${leads.length} leadov`;
 
   if ($("clearLeads")) $("clearLeads").classList.remove("hidden");
 
@@ -435,6 +617,7 @@ function render(start, leads, city, savedAt) {
     })
     .join("");
 
+  renderSummaryStats(leads);
   renderLeadList(leads);
 }
 
