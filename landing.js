@@ -197,12 +197,29 @@ document.addEventListener("DOMContentLoaded", () => {
   // 2. Interaktívna simulácia priloženia smartfónu
   // ----------------------------------------------------
   const triggerDemoBtn = document.getElementById("triggerDemoBtn");
+  const phoneMockup = document.getElementById("phoneMockup");
   const demoPopup = document.getElementById("demoPopup");
   const closeDemoBtn = document.getElementById("closeDemoBtn");
 
-  if (triggerDemoBtn && demoPopup) {
+  if (triggerDemoBtn) {
     triggerDemoBtn.addEventListener("click", () => {
-      demoPopup.classList.remove("hidden");
+      if (phoneMockup) {
+        // Zastaviť bežnú slučku, vykonať dynamické 3D priloženie k NFC karte
+        phoneMockup.style.animation = "none";
+        phoneMockup.style.transition = "transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
+        phoneMockup.style.transform = "perspective(800px) rotateX(14deg) translateY(75px) scale(1.05)";
+
+        setTimeout(() => {
+          if (demoPopup) demoPopup.classList.remove("hidden");
+          setTimeout(() => {
+            phoneMockup.style.transform = "";
+            phoneMockup.style.transition = "";
+            phoneMockup.style.animation = "";
+          }, 800);
+        }, 320);
+      } else if (demoPopup) {
+        demoPopup.classList.remove("hidden");
+      }
     });
   }
 
@@ -291,10 +308,11 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // ----------------------------------------------------
-  // 5. Odoslanie objednávky (WhatsApp / E-mail)
+  // 5. Odoslanie objednávky (WhatsApp: +421 904 938 699)
   // ----------------------------------------------------
   const orderForm = document.getElementById("orderForm");
   const orderSuccess = document.getElementById("orderSuccess");
+  const WHATSAPP_PHONE = "421904938699";
 
   if (orderForm) {
     orderForm.addEventListener("submit", (e) => {
@@ -306,19 +324,20 @@ document.addEventListener("DOMContentLoaded", () => {
       const pack = document.getElementById("orderPackage").value;
       const note = document.getElementById("orderNote").value.trim();
 
-      const text = `Dobrý deň, mám záujem o NFC stojančeky na Google recenzie:%0A%0A` +
+      const text = `Dobrý deň, mám záujem o NFC stojančeky / tagy na Google recenzie:%0A%0A` +
         `• Prevádzka: ${encodeURIComponent(businessName)} (${encodeURIComponent(city)})%0A` +
         `• Balík: ${encodeURIComponent(pack)}%0A` +
         `• Kontaktná osoba: ${encodeURIComponent(contactName)}%0A` +
         `• Telefón: ${encodeURIComponent(phone)}%0A` +
-        (note ? `• Poznámka: ${encodeURIComponent(note)}%0A` : '');
+        (note ? `• Poznámka: ${encodeURIComponent(note)}%0A` : '') +
+        `%0AĎakujem za informácie o doručení.`;
 
       if (orderSuccess) {
         orderSuccess.classList.remove("hidden");
       }
 
-      // Otvoriť WhatsApp s predvyplneným textom
-      window.open(`https://wa.me/?text=${text}`, "_blank");
+      // Otvoriť WhatsApp s predvyplneným textom priamo na číslo +421 904 938 699
+      window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${text}`, "_blank");
     });
   }
 
