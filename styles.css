@@ -838,6 +838,37 @@ button:active {
   margin-top: 8px;
 }
 
+.pin-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.pin-input-wrap input {
+  width: 100% !important;
+  padding-right: 48px !important;
+  box-sizing: border-box;
+}
+
+.pin-toggle-btn {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 8px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.pin-toggle-btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
 .back-to-web-link {
   color: #166534;
   font-size: 0.88rem;

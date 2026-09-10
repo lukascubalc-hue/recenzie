@@ -1,9 +1,10 @@
-const CACHE = "nfc-leads-v9";
+const CACHE = "nfc-leads-v11";
 const PRECACHE_ASSETS = [
   "./",
   "./index.html",
   "./portal.html",
   "./landing.css",
+  "./landing.js",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
@@ -51,6 +52,10 @@ self.addEventListener("fetch", (event) => {
         const cached = await caches.match(event.request);
         if (cached) return cached;
         if (event.request.mode === "navigate") {
+          if (url.pathname.includes("portal")) {
+            const portalCached = await caches.match("./portal.html");
+            if (portalCached) return portalCached;
+          }
           return caches.match("./index.html");
         }
       })

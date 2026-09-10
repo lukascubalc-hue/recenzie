@@ -55,25 +55,63 @@ function initAuthGate() {
   const authForm = $("authForm");
   const adminPinInput = $("adminPin");
   const authError = $("authError");
+  const authLoginBtn = $("authLoginBtn");
+  const togglePortalPinBtn = $("togglePortalPinBtn");
+
+  const ACCEPTED_PINS = ["178155", "nfc2026", "admin"];
+
+  if (togglePortalPinBtn && adminPinInput) {
+    togglePortalPinBtn.addEventListener("click", () => {
+      const isPass = adminPinInput.type === "password";
+      adminPinInput.type = isPass ? "text" : "password";
+      togglePortalPinBtn.textContent = isPass ? "🙈" : "👁️";
+      adminPinInput.focus();
+    });
+  }
+
+  function handlePortalLogin() {
+    const raw = adminPinInput ? adminPinInput.value : "";
+    const entered = raw.trim().replace(/\s+/g, "");
+    const storedPin = (localStorage.getItem(STORAGE_KEY_PIN) || "").trim().replace(/\s+/g, "");
+
+    const isValid = entered && (ACCEPTED_PINS.includes(entered) || (storedPin && entered === storedPin));
+
+    if (isValid) {
+      if (authError) authError.classList.add("hidden");
+      sessionStorage.setItem(STORAGE_KEY_AUTH, "valid");
+      localStorage.setItem(STORAGE_KEY_AUTH, "valid");
+      localStorage.setItem(STORAGE_KEY_PIN, "178155");
+      authGate.classList.add("hidden");
+      portalApp.classList.remove("hidden");
+      setStatus("Vitaj v obchodnom portáli.");
+    } else {
+      if (authError) authError.classList.remove("hidden");
+      if (adminPinInput) {
+        adminPinInput.value = "";
+        adminPinInput.focus();
+      }
+    }
+  }
 
   if (authForm) {
     authForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      const entered = adminPinInput ? adminPinInput.value.trim() : "";
-      const validPin = localStorage.getItem(STORAGE_KEY_PIN) || DEFAULT_PIN;
-      if (entered === validPin || entered === "admin") {
-        if (authError) authError.classList.add("hidden");
-        sessionStorage.setItem(STORAGE_KEY_AUTH, "valid");
-        localStorage.setItem(STORAGE_KEY_AUTH, "valid");
-        authGate.classList.add("hidden");
-        portalApp.classList.remove("hidden");
-        setStatus("Vitaj v obchodnom portáli.");
-      } else {
-        if (authError) authError.classList.remove("hidden");
-        if (adminPinInput) {
-          adminPinInput.value = "";
-          adminPinInput.focus();
-        }
+      handlePortalLogin();
+    });
+  }
+
+  if (authLoginBtn) {
+    authLoginBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      handlePortalLogin();
+    });
+  }
+
+  if (adminPinInput) {
+    adminPinInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handlePortalLogin();
       }
     });
   }
@@ -1382,5 +1420,5 @@ async function bootstrap() {
 bootstrap();
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js?v=9");
+  navigator.serviceWorker.register("sw.js?v=11");
 }

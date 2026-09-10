@@ -49,6 +49,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.hidden {
+  display: none !important;
+}
+
 /* Background Ambient Glows */
 .ambient-glow-1 {
   position: absolute;
@@ -965,6 +969,49 @@ body {
 
 .modal-close-btn:hover {
   color: #ffffff;
+}
+
+.pin-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.pin-input-wrap input {
+  width: 100% !important;
+  padding-right: 48px !important;
+  box-sizing: border-box;
+}
+
+.pin-toggle-btn {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 8px;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.pin-toggle-btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.auth-error-msg {
+  color: #fca5a5;
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-top: 10px;
+  text-align: center;
 }
 
 /* ----------------------------------------------------

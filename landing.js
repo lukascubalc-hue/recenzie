@@ -14,16 +14,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalAuthForm = document.getElementById("modalAuthForm");
   const modalPinInput = document.getElementById("modalPinInput");
   const modalAuthError = document.getElementById("modalAuthError");
+  const toggleModalPinBtn = document.getElementById("toggleModalPinBtn");
+  const modalAuthSubmitBtn = document.getElementById("modalAuthSubmitBtn");
 
   const STORAGE_KEY_AUTH = "nfc_portal_auth_token";
   const STORAGE_KEY_PIN = "nfc_portal_admin_pin";
-  const DEFAULT_PIN = "178155";
+  const ACCEPTED_PINS = ["178155", "nfc2026", "admin"];
 
   function openModal() {
     if (loginModal) {
       loginModal.classList.remove("hidden");
       if (modalPinInput) {
         modalPinInput.value = "";
+        modalPinInput.type = "password";
+        if (toggleModalPinBtn) toggleModalPinBtn.textContent = "👁️";
         modalPinInput.focus();
       }
       if (modalAuthError) modalAuthError.classList.add("hidden");
@@ -44,22 +48,61 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  if (toggleModalPinBtn && modalPinInput) {
+    toggleModalPinBtn.addEventListener("click", () => {
+      const isPass = modalPinInput.type === "password";
+      modalPinInput.type = isPass ? "text" : "password";
+      toggleModalPinBtn.textContent = isPass ? "🙈" : "👁️";
+      modalPinInput.focus();
+    });
+  }
+
+  function handleModalLogin() {
+    const raw = modalPinInput ? modalPinInput.value : "";
+    const entered = raw.trim().replace(/\s+/g, "");
+    const storedPin = (localStorage.getItem(STORAGE_KEY_PIN) || "").trim().replace(/\s+/g, "");
+
+    const isValid = entered && (ACCEPTED_PINS.includes(entered) || (storedPin && entered === storedPin));
+
+    if (isValid) {
+      sessionStorage.setItem(STORAGE_KEY_AUTH, "valid");
+      localStorage.setItem(STORAGE_KEY_AUTH, "valid");
+      localStorage.setItem(STORAGE_KEY_PIN, "178155");
+
+      const path = window.location.pathname;
+      let target = "./portal.html";
+      if (!path.endsWith("/") && !path.endsWith(".html")) {
+        target = path + "/portal.html";
+      }
+      window.location.href = target;
+    } else {
+      if (modalAuthError) modalAuthError.classList.remove("hidden");
+      if (modalPinInput) {
+        modalPinInput.value = "";
+        modalPinInput.focus();
+      }
+    }
+  }
+
   if (modalAuthForm) {
     modalAuthForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      const entered = modalPinInput ? modalPinInput.value.trim() : "";
-      const validPin = localStorage.getItem(STORAGE_KEY_PIN) || DEFAULT_PIN;
+      handleModalLogin();
+    });
+  }
 
-      if (entered === validPin || entered === "admin") {
-        sessionStorage.setItem(STORAGE_KEY_AUTH, "valid");
-        localStorage.setItem(STORAGE_KEY_AUTH, "valid");
-        window.location.href = "portal.html";
-      } else {
-        if (modalAuthError) modalAuthError.classList.remove("hidden");
-        if (modalPinInput) {
-          modalPinInput.value = "";
-          modalPinInput.focus();
-        }
+  if (modalAuthSubmitBtn) {
+    modalAuthSubmitBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      handleModalLogin();
+    });
+  }
+
+  if (modalPinInput) {
+    modalPinInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleModalLogin();
       }
     });
   }
