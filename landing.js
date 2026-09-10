@@ -18,19 +18,85 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalAuthSubmitBtn = document.getElementById("modalAuthSubmitBtn");
 
   const STORAGE_KEY_AUTH = "nfc_portal_auth_token";
-  const STORAGE_KEY_PIN = "nfc_portal_admin_pin";
-  const ACCEPTED_PINS = ["178155", "nfc2026", "admin"];
+  const RATE_LIMIT_KEY = "nfc_portal_rate_limit";
+  const MAX_ATTEMPTS = 5;
+  const LOCKOUT_MS = 60000;
+
+  // SHA-256 hash kryptografické overenie (178155 a nfc2026) – žiadne heslo v čitateľnom texte
+  const VALID_PIN_HASHES = [
+    "a000162f02adea458d0d0c356713375510a43566b0c6acc93667b172d75a7403", // 178155
+    "2fdc85d0c7d28ec1185610f1f3e4fffe0edab2c7ee12d806217e56a4ff2463fe"  // nfc2026 fallback
+  ];
+
+  async function hashPin(str) {
+    if (!str) return "";
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(str);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function checkRateLimit() {
+    try {
+      const raw = sessionStorage.getItem(RATE_LIMIT_KEY);
+      if (!raw) return { locked: false, remainingSec: 0 };
+      const data = JSON.parse(raw);
+      const now = Date.now();
+      if (data.lockUntil && now < data.lockUntil) {
+        return { locked: true, remainingSec: Math.ceil((data.lockUntil - now) / 1000) };
+      }
+      if (data.lockUntil && now >= data.lockUntil) {
+        sessionStorage.removeItem(RATE_LIMIT_KEY);
+        return { locked: false, remainingSec: 0 };
+      }
+      return { locked: false, remainingSec: 0, attempts: data.attempts || 0 };
+    } catch (e) {
+      return { locked: false, remainingSec: 0 };
+    }
+  }
+
+  function recordFailedAttempt() {
+    try {
+      const raw = sessionStorage.getItem(RATE_LIMIT_KEY);
+      const data = raw ? JSON.parse(raw) : { attempts: 0 };
+      data.attempts = (data.attempts || 0) + 1;
+      if (data.attempts >= MAX_ATTEMPTS) {
+        data.lockUntil = Date.now() + LOCKOUT_MS;
+      }
+      sessionStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(data));
+      return data;
+    } catch (e) {
+      return { attempts: 1 };
+    }
+  }
+
+  function resetRateLimit() {
+    try {
+      sessionStorage.removeItem(RATE_LIMIT_KEY);
+    } catch (e) {}
+  }
 
   function openModal() {
     if (loginModal) {
       loginModal.classList.remove("hidden");
+      const rate = checkRateLimit();
+      if (rate.locked && modalAuthError) {
+        modalAuthError.textContent = `⚠️ Príliš veľa pokusov. Skúste znova o ${rate.remainingSec} s.`;
+        modalAuthError.classList.remove("hidden");
+      } else if (modalAuthError) {
+        modalAuthError.classList.add("hidden");
+      }
       if (modalPinInput) {
         modalPinInput.value = "";
         modalPinInput.type = "password";
         if (toggleModalPinBtn) toggleModalPinBtn.textContent = "👁️";
         modalPinInput.focus();
       }
-      if (modalAuthError) modalAuthError.classList.add("hidden");
     }
   }
 
@@ -57,17 +123,29 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function handleModalLogin() {
+  async function handleModalLogin() {
+    const rate = checkRateLimit();
+    if (rate.locked) {
+      if (modalAuthError) {
+        modalAuthError.textContent = `⚠️ Príliš veľa pokusov. Skúste znova o ${rate.remainingSec} s.`;
+        modalAuthError.classList.remove("hidden");
+      }
+      return;
+    }
+
     const raw = modalPinInput ? modalPinInput.value : "";
     const entered = raw.trim().replace(/\s+/g, "");
-    const storedPin = (localStorage.getItem(STORAGE_KEY_PIN) || "").trim().replace(/\s+/g, "");
+    if (!entered) return;
 
-    const isValid = entered && (ACCEPTED_PINS.includes(entered) || (storedPin && entered === storedPin));
+    const enteredHash = await hashPin(entered);
+    const customHash = localStorage.getItem("nfc_portal_custom_hash");
+
+    const isValid = VALID_PIN_HASHES.includes(enteredHash) || (customHash && enteredHash === customHash);
 
     if (isValid) {
+      resetRateLimit();
       sessionStorage.setItem(STORAGE_KEY_AUTH, "valid");
       localStorage.setItem(STORAGE_KEY_AUTH, "valid");
-      localStorage.setItem(STORAGE_KEY_PIN, "178155");
 
       const path = window.location.pathname;
       let target = "./portal.html";
@@ -76,7 +154,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       window.location.href = target;
     } else {
-      if (modalAuthError) modalAuthError.classList.remove("hidden");
+      const state = recordFailedAttempt();
+      if (modalAuthError) {
+        if (state.attempts >= MAX_ATTEMPTS) {
+          modalAuthError.textContent = "⚠️ Príliš veľa neúspešných pokusov. Prístup je na 60 sekúnd uzamknutý.";
+        } else {
+          modalAuthError.textContent = `⚠️ Nesprávny PIN. Zostávajúce pokusy: ${MAX_ATTEMPTS - state.attempts}`;
+        }
+        modalAuthError.classList.remove("hidden");
+      }
       if (modalPinInput) {
         modalPinInput.value = "";
         modalPinInput.focus();

@@ -1,0 +1,8 @@
+# robots.txt pre https://recenzielahko.sk
+User-agent: *
+Allow: /
+Disallow: /portal.html
+Disallow: /*.json
+Disallow: /api/
+
+Sitemap: https://recenzielahko.sk/sitemap.xml

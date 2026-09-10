@@ -37,6 +37,9 @@ try {
         $context = $listener.GetContext()
         $request = $context.Request
         $response = $context.Response
+        $response.Headers.Add("X-Content-Type-Options", "nosniff")
+        $response.Headers.Add("X-Frame-Options", "SAMEORIGIN")
+        $response.Headers.Add("Referrer-Policy", "strict-origin-when-cross-origin")
 
         try {
             $relPath = $request.Url.LocalPath.TrimStart('/')
@@ -83,12 +86,16 @@ try {
                 $response.ContentType = $contentType
                 $bytes = [System.IO.File]::ReadAllBytes($filePath)
                 $response.ContentLength64 = $bytes.Length
-                $response.OutputStream.Write($bytes, 0, $bytes.Length)
+                if ($request.HttpMethod -ne "HEAD") {
+                    $response.OutputStream.Write($bytes, 0, $bytes.Length)
+                }
             } else {
                 $response.StatusCode = 404
                 $msg = [System.Text.Encoding]::UTF8.GetBytes("404 Not Found")
                 $response.ContentLength64 = $msg.Length
-                $response.OutputStream.Write($msg, 0, $msg.Length)
+                if ($request.HttpMethod -ne "HEAD") {
+                    $response.OutputStream.Write($msg, 0, $msg.Length)
+                }
             }
         } catch {
             Write-Host "Error serving request: $_"

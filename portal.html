@@ -8,10 +8,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="Interný obchodný portál NFC Leady – výber podnikov a plánovač trás v teréne." />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=11" />
+    <link rel="stylesheet" href="styles.css?v=12" />
     <title>NFC Leady – Obchodný portál</title>
   </head>
   <body>
@@ -25,18 +27,14 @@
         <form id="authForm" style="margin-top: 16px;">
           <label for="adminPin" style="text-align: left; display: block; margin-bottom: 6px; font-weight: 700; font-size: 0.9rem; color: #12372a;">Prístupový PIN</label>
           <div class="pin-input-wrap">
-            <input id="adminPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Zadaj PIN (178155)" style="font-size: 1.15rem; letter-spacing: 4px; text-align: center;" autofocus required />
+            <input id="adminPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Zadaj PIN" style="font-size: 1.15rem; letter-spacing: 4px; text-align: center;" autofocus required />
             <button id="togglePortalPinBtn" type="button" class="pin-toggle-btn" title="Zobraziť / Skryť PIN">👁️</button>
           </div>
           <p id="authError" class="auth-error-msg hidden">⚠️ Nesprávny PIN. Skús to znovu.</p>
           <button id="authLoginBtn" type="submit" class="primary" style="margin-top: 14px; min-height: 48px; width: 100%;">Odomknúť portál</button>
         </form>
 
-        <p class="hint" style="margin-top: 14px; font-size: 0.82rem; color: #486955;">
-          Predvolený PIN: <strong style="color: #12372a; letter-spacing: 1px;">178155</strong>
-        </p>
-
-        <div style="margin-top: 16px; border-top: 1px solid #e2ece5; padding-top: 14px;">
+        <div style="margin-top: 18px; border-top: 1px solid #e2ece5; padding-top: 14px;">
           <a href="index.html" class="back-to-web-link">← Návrat na verejnú stránku</a>
         </div>
       </div>
@@ -89,7 +87,7 @@
 
         <label for="portalPasswordInput">Zmeniť prístupové heslo portálu</label>
         <div class="input-action-row">
-          <input id="portalPasswordInput" type="text" autocomplete="off" placeholder="nové heslo (napr. mojeheslo123)" />
+          <input id="portalPasswordInput" type="password" autocomplete="new-password" placeholder="nový PIN / heslo (min. 4 znaky)" />
           <button id="savePortalPasswordBtn" type="button" class="secondary" style="min-width: 100px;">Zmeniť</button>
         </div>
         <p class="hint">Zmení heslo potrebné pre vstup do tohto portálu.</p>
@@ -208,6 +206,6 @@
         </div>
       </section>
     </main>
-    <script src="app.js?v=11"></script>
+    <script src="app.js?v=12"></script>
   </body>
 </html>

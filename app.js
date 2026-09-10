@@ -30,18 +30,77 @@ let currentFilter = "all"; // 'all' | 'pending' | 'done'
 let deferredInstallPrompt = null;
 
 // ----------------------------------------------------
-// Auth Gate pre interný portál (portal.html)
+// Auth Gate pre interný portál (portal.html) – Zabezpečenie SHA-256
 // ----------------------------------------------------
 const STORAGE_KEY_AUTH = "nfc_portal_auth_token";
-const STORAGE_KEY_PIN = "nfc_portal_admin_pin";
-const DEFAULT_PIN = "178155";
+const RATE_LIMIT_KEY = "nfc_portal_rate_limit";
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 60000;
+
+// SHA-256 hash kryptografické overenie (178155 a nfc2026 fallback)
+const VALID_PIN_HASHES = [
+  "a000162f02adea458d0d0c356713375510a43566b0c6acc93667b172d75a7403", // 178155
+  "2fdc85d0c7d28ec1185610f1f3e4fffe0edab2c7ee12d806217e56a4ff2463fe"  // nfc2026
+];
+
+async function hashPin(str) {
+  if (!str) return "";
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  } catch (e) {
+    return "";
+  }
+}
+
+function checkRateLimit() {
+  try {
+    const raw = sessionStorage.getItem(RATE_LIMIT_KEY);
+    if (!raw) return { locked: false, remainingSec: 0 };
+    const data = JSON.parse(raw);
+    const now = Date.now();
+    if (data.lockUntil && now < data.lockUntil) {
+      return { locked: true, remainingSec: Math.ceil((data.lockUntil - now) / 1000) };
+    }
+    if (data.lockUntil && now >= data.lockUntil) {
+      sessionStorage.removeItem(RATE_LIMIT_KEY);
+      return { locked: false, remainingSec: 0 };
+    }
+    return { locked: false, remainingSec: 0, attempts: data.attempts || 0 };
+  } catch (e) {
+    return { locked: false, remainingSec: 0 };
+  }
+}
+
+function recordFailedAttempt() {
+  try {
+    const raw = sessionStorage.getItem(RATE_LIMIT_KEY);
+    const data = raw ? JSON.parse(raw) : { attempts: 0 };
+    data.attempts = (data.attempts || 0) + 1;
+    if (data.attempts >= MAX_ATTEMPTS) {
+      data.lockUntil = Date.now() + LOCKOUT_MS;
+    }
+    sessionStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(data));
+    return data;
+  } catch (e) {
+    return { attempts: 1 };
+  }
+}
+
+function resetRateLimit() {
+  try {
+    sessionStorage.removeItem(RATE_LIMIT_KEY);
+  } catch (e) {}
+}
 
 function initAuthGate() {
   const authGate = $("authGate");
   const portalApp = $("portalApp");
   if (!authGate || !portalApp) return;
 
-  const currentPin = localStorage.getItem(STORAGE_KEY_PIN) || DEFAULT_PIN;
   const isAuth = sessionStorage.getItem(STORAGE_KEY_AUTH) === "valid" || localStorage.getItem(STORAGE_KEY_AUTH) === "valid";
 
   if (isAuth) {
@@ -58,7 +117,11 @@ function initAuthGate() {
   const authLoginBtn = $("authLoginBtn");
   const togglePortalPinBtn = $("togglePortalPinBtn");
 
-  const ACCEPTED_PINS = ["178155", "nfc2026", "admin"];
+  const rate = checkRateLimit();
+  if (rate.locked && authError) {
+    authError.textContent = `⚠️ Príliš veľa pokusov. Skús to znova o ${rate.remainingSec} s.`;
+    authError.classList.remove("hidden");
+  }
 
   if (togglePortalPinBtn && adminPinInput) {
     togglePortalPinBtn.addEventListener("click", () => {
@@ -69,23 +132,43 @@ function initAuthGate() {
     });
   }
 
-  function handlePortalLogin() {
+  async function handlePortalLogin() {
+    const rateCheck = checkRateLimit();
+    if (rateCheck.locked) {
+      if (authError) {
+        authError.textContent = `⚠️ Príliš veľa neúspešných pokusov. Skús to o ${rateCheck.remainingSec} s.`;
+        authError.classList.remove("hidden");
+      }
+      return;
+    }
+
     const raw = adminPinInput ? adminPinInput.value : "";
     const entered = raw.trim().replace(/\s+/g, "");
-    const storedPin = (localStorage.getItem(STORAGE_KEY_PIN) || "").trim().replace(/\s+/g, "");
+    if (!entered) return;
 
-    const isValid = entered && (ACCEPTED_PINS.includes(entered) || (storedPin && entered === storedPin));
+    const enteredHash = await hashPin(entered);
+    const customHash = localStorage.getItem("nfc_portal_custom_hash");
+
+    const isValid = VALID_PIN_HASHES.includes(enteredHash) || (customHash && enteredHash === customHash);
 
     if (isValid) {
+      resetRateLimit();
       if (authError) authError.classList.add("hidden");
       sessionStorage.setItem(STORAGE_KEY_AUTH, "valid");
       localStorage.setItem(STORAGE_KEY_AUTH, "valid");
-      localStorage.setItem(STORAGE_KEY_PIN, "178155");
       authGate.classList.add("hidden");
       portalApp.classList.remove("hidden");
       setStatus("Vitaj v obchodnom portáli.");
     } else {
-      if (authError) authError.classList.remove("hidden");
+      const state = recordFailedAttempt();
+      if (authError) {
+        if (state.attempts >= MAX_ATTEMPTS) {
+          authError.textContent = "⚠️ Príliš veľa neúspešných pokusov. Prístup je na 60 sekúnd uzamknutý.";
+        } else {
+          authError.textContent = `⚠️ Nesprávny PIN. Zostávajúce pokusy: ${MAX_ATTEMPTS - state.attempts}`;
+        }
+        authError.classList.remove("hidden");
+      }
       if (adminPinInput) {
         adminPinInput.value = "";
         adminPinInput.focus();
@@ -128,15 +211,20 @@ function initAuthGate() {
   const savePortalPasswordBtn = $("savePortalPasswordBtn");
   const portalPasswordInput = $("portalPasswordInput");
   if (savePortalPasswordBtn && portalPasswordInput) {
-    savePortalPasswordBtn.addEventListener("click", () => {
-      const newPass = portalPasswordInput.value.trim();
+    savePortalPasswordBtn.addEventListener("click", async () => {
+      const newPass = portalPasswordInput.value.trim().replace(/\s+/g, "");
       if (!newPass) {
-        alert("Zadaj nové heslo.");
+        alert("Zadaj nový PIN alebo heslo.");
         return;
       }
-      localStorage.setItem(STORAGE_KEY_PIN, newPass);
+      if (newPass.length < 4) {
+        alert("Heslo alebo PIN musí mať aspoň 4 znaky.");
+        return;
+      }
+      const newHash = await hashPin(newPass);
+      localStorage.setItem("nfc_portal_custom_hash", newHash);
       portalPasswordInput.value = "";
-      alert("Prístupové heslo portálu bolo úspešne zmenené!");
+      alert("Prístupové heslo portálu bolo úspešne zmenené a bezpečne zašifrované!");
     });
   }
 }
@@ -1420,5 +1508,5 @@ async function bootstrap() {
 bootstrap();
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js?v=11");
+  navigator.serviceWorker.register("sw.js?v=12");
 }

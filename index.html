@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#071912" />
     <meta name="description" content="Získajte až 10× viac 5★ recenzií na Google jedným priložením mobilu. Prémiové NFC stojančeky a nálepky pre reštaurácie, kaviarne, salóny a lokálne prevádzky." />
+    <meta name="robots" content="index, follow" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="landing.css?v=11" />
+    <link rel="stylesheet" href="landing.css?v=12" />
     <title>RecenzieĽahko.sk – Viac 5★ Google recenzií jedným dotykom</title>
   </head>
   <body>
@@ -475,7 +477,7 @@
 
         <form id="modalAuthForm">
           <div class="pin-input-wrap">
-            <input id="modalPinInput" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Zadajte PIN (178155)" style="background: rgba(0,0,0,0.4); border: 1.5px solid var(--border); color: #fff; padding: 12px 48px 12px 14px; border-radius: 10px; font-size: 1.2rem; text-align: center; letter-spacing: 4px;" required autofocus />
+            <input id="modalPinInput" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Zadajte PIN" style="background: rgba(0,0,0,0.4); border: 1.5px solid var(--border); color: #fff; padding: 12px 48px 12px 14px; border-radius: 10px; font-size: 1.2rem; text-align: center; letter-spacing: 4px;" required autofocus />
             <button id="toggleModalPinBtn" type="button" class="pin-toggle-btn" title="Zobraziť / Skryť PIN">👁️</button>
           </div>
           <p id="modalAuthError" class="auth-error-msg hidden">⚠️ Nesprávny PIN. Skúste znova.</p>
@@ -485,13 +487,12 @@
         </form>
 
         <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 0.82rem; color: var(--text-muted); text-align: center;">
-          <p style="margin-bottom: 8px;">Predvolený PIN: <strong style="color: #6ee7b7; letter-spacing: 1px;">178155</strong></p>
           <a href="./portal.html" style="color: #34d399; text-decoration: underline; font-weight: 600;">Otvoriť portál priamo (portal.html) →</a>
         </div>
       </div>
     </div>
 
     <!-- Script -->
-    <script src="landing.js?v=11"></script>
+    <script src="landing.js?v=12"></script>
   </body>
 </html>
