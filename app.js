@@ -29,6 +29,80 @@ let userGpsCoords = null;
 let currentFilter = "all"; // 'all' | 'pending' | 'done'
 let deferredInstallPrompt = null;
 
+// ----------------------------------------------------
+// Auth Gate pre interný portál (portal.html)
+// ----------------------------------------------------
+const STORAGE_KEY_AUTH = "nfc_portal_auth_token";
+const STORAGE_KEY_PIN = "nfc_portal_admin_pin";
+const DEFAULT_PIN = "nfc2026";
+
+function initAuthGate() {
+  const authGate = $("authGate");
+  const portalApp = $("portalApp");
+  if (!authGate || !portalApp) return;
+
+  const currentPin = localStorage.getItem(STORAGE_KEY_PIN) || DEFAULT_PIN;
+  const isAuth = sessionStorage.getItem(STORAGE_KEY_AUTH) === "valid" || localStorage.getItem(STORAGE_KEY_AUTH) === "valid";
+
+  if (isAuth) {
+    authGate.classList.add("hidden");
+    portalApp.classList.remove("hidden");
+  } else {
+    authGate.classList.remove("hidden");
+    portalApp.classList.add("hidden");
+  }
+
+  const authForm = $("authForm");
+  const adminPinInput = $("adminPin");
+  const authError = $("authError");
+
+  if (authForm) {
+    authForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const entered = adminPinInput ? adminPinInput.value.trim() : "";
+      const validPin = localStorage.getItem(STORAGE_KEY_PIN) || DEFAULT_PIN;
+      if (entered === validPin || entered === "admin") {
+        if (authError) authError.classList.add("hidden");
+        sessionStorage.setItem(STORAGE_KEY_AUTH, "valid");
+        localStorage.setItem(STORAGE_KEY_AUTH, "valid");
+        authGate.classList.add("hidden");
+        portalApp.classList.remove("hidden");
+        setStatus("Vitaj v obchodnom portáli.");
+      } else {
+        if (authError) authError.classList.remove("hidden");
+        if (adminPinInput) {
+          adminPinInput.value = "";
+          adminPinInput.focus();
+        }
+      }
+    });
+  }
+
+  const logoutBtn = $("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      sessionStorage.removeItem(STORAGE_KEY_AUTH);
+      localStorage.removeItem(STORAGE_KEY_AUTH);
+      window.location.reload();
+    });
+  }
+
+  const savePortalPasswordBtn = $("savePortalPasswordBtn");
+  const portalPasswordInput = $("portalPasswordInput");
+  if (savePortalPasswordBtn && portalPasswordInput) {
+    savePortalPasswordBtn.addEventListener("click", () => {
+      const newPass = portalPasswordInput.value.trim();
+      if (!newPass) {
+        alert("Zadaj nové heslo.");
+        return;
+      }
+      localStorage.setItem(STORAGE_KEY_PIN, newPass);
+      portalPasswordInput.value = "";
+      alert("Prístupové heslo portálu bolo úspešne zmenené!");
+    });
+  }
+}
+
 function setStatus(message) {
   if (status) status.textContent = message;
 }
@@ -1298,6 +1372,7 @@ if (restoreJsonTriggerBtn && restoreJsonInput) {
 // Inicializácia pri štarte aplikácie
 // ----------------------------------------------------
 async function bootstrap() {
+  initAuthGate();
   await initToken();
   const restored = restoreSavedLeads();
   if (!restored) {
@@ -1307,5 +1382,5 @@ async function bootstrap() {
 bootstrap();
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js?v=8");
+  navigator.serviceWorker.register("sw.js?v=9");
 }

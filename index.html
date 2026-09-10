@@ -3,165 +3,491 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#12372a" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="description" content="Mobilný výber NFC review leadov z Google Maps v teréne." />
-    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#071912" />
+    <meta name="description" content="Získajte až 10× viac 5★ recenzií na Google jedným priložením mobilu. Prémiové NFC stojančeky a nálepky pre reštaurácie, kaviarne, salóny a lokálne prevádzky." />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=8" />
-    <title>NFC Leady</title>
+    <link rel="stylesheet" href="landing.css?v=1" />
+    <title>NFC Recenzie – Viac 5★ Google recenzií jedným dotykom</title>
   </head>
   <body>
-    <main class="app-shell">
-      <!-- PWA Install Banner pre Android -->
-      <div id="installBanner" class="panel install-banner hidden">
-        <div class="install-banner-content">
-          <span class="install-banner-icon">📲</span>
-          <div>
-            <strong>Nainštalovať aplikáciu</strong>
-            <p class="hint">Používaj NFC Leady ako natívnu aplikáciu priamo na ploche mobilu.</p>
-          </div>
-        </div>
-        <div class="install-banner-actions">
-          <button id="installAppBtn" class="primary install-action-btn">Inštalovať</button>
-          <button id="dismissInstallBtn" class="secondary install-dismiss-btn" title="Zavrieť">✕</button>
+    <!-- Ambient Glows -->
+    <div class="ambient-glow-1"></div>
+    <div class="ambient-glow-2"></div>
+
+    <!-- Top Announcement Bar -->
+    <div class="top-bar">
+      <span>🚀 Špeciálna ponuka: <strong>Bezplatné naprogramovanie</strong> na váš Google profil + doručenie do 48 hodín!</span>
+    </div>
+
+    <!-- Navbar -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <a href="#hero" class="brand-logo">
+          <div class="brand-icon-wrap">⚡</div>
+          <div>NFC <span class="accent">Recenzie</span></div>
+        </a>
+
+        <nav>
+          <ul class="nav-links">
+            <li><a href="#ako-to-funguje">Ako to funguje</a></li>
+            <li><a href="#kalkulacka">Kalkulačka</a></li>
+            <li><a href="#vyhody">Prečo recenzie</a></li>
+            <li><a href="#cennik">Cenník</a></li>
+            <li><a href="#objednavka">Objednávka</a></li>
+          </ul>
+        </nav>
+
+        <div class="nav-actions">
+          <button id="portalLoginBtn" class="portal-login-btn" type="button" title="Vstup do interného scrapera a CRM">
+            🔒 Obchodný portál
+          </button>
         </div>
       </div>
+    </header>
 
-      <header class="hero">
-        <div class="hero-top">
-          <div class="hero-title-wrap">
-            <span class="app-badge">PWA V TERÉNE</span>
-            <h1>NFC Leady</h1>
+    <!-- Hero Section -->
+    <section id="hero" class="hero-section">
+      <div class="container hero-grid">
+        <div class="hero-text-col">
+          <div class="hero-badge">
+            <span>⭐</span> ZVÝŠTE NÁVŠTEVNOSŤ Z GOOGLE MÁP AŽ O 30 %
           </div>
-          <button id="settingsButton" class="icon-button" aria-label="Nastavenia" title="Nastavenia a token">⚙️</button>
-        </div>
-        <p class="subtitle">Vyhľadanie podnikov s potenciálom pre Google NFC recenzie a optimalizácia trasy priamo v teréne.</p>
-      </header>
+          <h1 class="hero-title">
+            Získajte až 10× viac <span class="gradient-text">5★ recenzií na Google</span> jedným priložením mobilu.
+          </h1>
+          <p class="hero-subtitle">
+            Inteligentné bezkontaktné NFC stojančeky a nálepky pre reštaurácie, kaviarne, salóny a lokálne prevádzky. Zákazník len priloží smartfón a do 2 sekúnd hodnotí váš podnik – bez nutnosti sťahovať akúkoľvek aplikáciu.
+          </p>
 
-      <section id="settings" class="panel hidden">
-        <label for="token">Apify API token</label>
-        <input id="token" type="password" autocomplete="off" placeholder="apify_api_…" />
-        <p class="hint">Uloží sa iba lokálne v tomto zariadení alebo do súboru .env.</p>
-        <button id="saveToken" class="secondary">Uložiť token</button>
-
-        <hr style="border:0; border-top:1px solid #dce6de; margin:16px 0;" />
-
-        <label for="datasetId">Importovať existujúci Dataset ID</label>
-        <input id="datasetId" type="text" autocomplete="off" placeholder="napr. tAlrTSyTezjfBSiBf" value="tAlrTSyTezjfBSiBf" />
-        <p class="hint">Načíta hotové leady z Apify datasetu a naplánuje trasu bez nového crawlera.</p>
-        <button id="importDatasetBtn" class="secondary">Importovať dataset</button>
-
-        <hr style="border:0; border-top:1px solid #dce6de; margin:16px 0;" />
-
-        <p class="eyebrow" style="margin-bottom:8px;">ZÁLOHOVANIE & PRENOS DÁT</p>
-        <p class="hint" style="margin-bottom:10px;">Stiahni si zálohu svojich leadov a tržieb do súboru alebo ju obnov v inom zariadení.</p>
-        <div class="backup-actions-grid">
-          <button id="backupJsonBtn" class="secondary" type="button">💾 Stiahnuť zálohu (JSON)</button>
-          <button id="restoreJsonTriggerBtn" class="secondary" type="button">📥 Obnoviť zo zálohy</button>
-          <input id="restoreJsonInput" type="file" accept=".json" style="display:none;" />
-        </div>
-      </section>
-
-      <!-- Rýchly import datasetu -->
-      <section class="panel dataset-panel">
-        <p class="eyebrow">RÝCHLY IMPORT Z APIFY</p>
-        <label for="mainDatasetId">Apify Dataset ID</label>
-        <div class="input-action-row">
-          <input id="mainDatasetId" type="text" autocomplete="off" value="tAlrTSyTezjfBSiBf" placeholder="napr. tAlrTSyTezjfBSiBf" />
-          <button id="mainImportDatasetBtn" class="primary import-btn">📥 Načítať dataset</button>
-        </div>
-        <p class="hint">Vlož ID datasetu a aplikácia okamžite stiahne a zobrazí všetky podniky.</p>
-      </section>
-
-      <!-- Parametre trasy & crawler -->
-      <section class="panel form-panel">
-        <label for="city">Mesto</label>
-        <input id="city" autocomplete="address-level2" value="Trnava" placeholder="napr. Trnava" />
-
-        <label for="startAddress">Štartovacia adresa / Poloha</label>
-        <div class="input-action-row">
-          <input id="startAddress" autocomplete="street-address" value="Hlavná 12, Trnava" placeholder="napr. Hlavná 12, Trnava" />
-          <button id="useGpsBtn" type="button" class="secondary gps-btn" title="Použiť moju aktuálnu GPS polohu">📍 Moja poloha</button>
-        </div>
-        <p id="gpsStatus" class="hint gps-status"></p>
-
-        <label for="categories" style="margin-top:10px;">Typy prevádzok</label>
-        <textarea id="categories" rows="3">reštaurácia, kaviareň, kaderníctvo, kozmetický salón, autoservis, zubár, fitness centrum</textarea>
-
-        <div class="filters">
-          <label>Max. recenzií <input id="maxReviews" type="number" min="1" max="500" value="50" /></label>
-          <label>Max. leadov <input id="maxLeads" type="number" min="1" max="30" value="20" /></label>
-        </div>
-        <button id="findLeads" class="primary">Nájsť najlepšie leady (nový crawler)</button>
-        <p id="status" class="status" aria-live="polite">Pripravené.</p>
-      </section>
-
-      <!-- Zoznam a trasa leadov -->
-      <section id="result">
-        <div class="result-heading">
-          <div>
-            <p id="resultEyebrow" class="eyebrow">ZOZNAM LEADOV V TERÉNE</p>
-            <h2 id="resultTitle">Trasa & Vybrané prevádzky</h2>
-            <p id="savedAtInfo" class="hint"></p>
+          <div class="hero-cta-row">
+            <a href="#cennik" class="btn-primary">
+              🚀 Vybrať balík stojančekov
+            </a>
+            <a href="#kalkulacka" class="btn-secondary">
+              📊 Vypočítať rast hodnotenia
+            </a>
           </div>
-          <div class="result-actions">
-            <span id="leadCount" class="badge">0 leadov</span>
-            <button id="clearLeads" class="secondary clear-btn hidden" title="Vymazať uložené leady">✕ Zmazať</button>
+
+          <div class="trust-bullets">
+            <div class="trust-item">
+              <span class="icon">✓</span> Funguje na Apple iPhone aj Android
+            </div>
+            <div class="trust-item">
+              <span class="icon">✓</span> Bez akýchkoľvek mesačných poplatkov
+            </div>
+            <div class="trust-item">
+              <span class="icon">✓</span> Doživotná funkčnosť
+            </div>
           </div>
         </div>
 
-        <!-- Mini-CRM Denný sumár -->
-        <div id="crmDashboard" class="crm-dashboard">
-          <div class="crm-stat-card">
-            <span class="stat-label">Oslovené</span>
-            <span id="statContacted" class="stat-value">0 / 0</span>
-          </div>
-          <div class="crm-stat-card highlight-sold">
-            <span class="stat-label">Predané</span>
-            <span id="statSoldPieces" class="stat-value">0 ks</span>
-          </div>
-          <div class="crm-stat-card highlight-revenue">
-            <span class="stat-label">Tržba</span>
-            <span id="statRevenue" class="stat-value">0 €</span>
+        <!-- 3D Stand Visual & Simulation -->
+        <div class="hero-visual-col">
+          <div class="hero-visual-card">
+            <!-- Simulated Google Review Popup (Toggled on Click) -->
+            <div id="demoPopup" class="demo-popup-overlay hidden">
+              <span style="font-size: 2rem;">🎉</span>
+              <h4>Google Hodnotenie</h4>
+              <p class="hint" style="color: #94a3b8; font-size: 0.82rem;">Vaša prevádzka na Google Mapách</p>
+              <div class="demo-popup-stars">★★★★★</div>
+              <p style="font-size: 0.88rem; color: #a7f3d0; font-weight: 700;">Formulár sa otvoril za 1,2 sekundy!</p>
+              <p class="hint" style="color: #cbd5e1; font-size: 0.78rem; margin-top: 4px;">Hostia nemusia nič hľadať v mobile.</p>
+              <button id="closeDemoBtn" class="demo-popup-close-btn" type="button">✕ Zavrieť ukážku</button>
+            </div>
+
+            <!-- Stand Mockup -->
+            <div class="stand-mockup">
+              <div class="stand-google-logo">
+                <span>G</span><span>o</span><span>o</span><span>g</span><span>l</span><span>e</span>
+              </div>
+              <div class="stand-nfc-wave">
+                <span>📡</span>
+              </div>
+              <div>
+                <div class="stand-stars">★★★★★</div>
+                <div class="stand-tap-hint">Priložte telefón sem</div>
+              </div>
+            </div>
+
+            <button id="triggerDemoBtn" class="interactive-demo-btn" type="button">
+              📱 Kliknite sem a vyskúšajte simuláciu priloženia
+            </button>
+            <p class="hint" style="margin-top: 10px; color: #64748b; font-size: 0.78rem;">
+              Akrylový stojanček v prémiovej čierno-zelenej povrchovej úprave.
+            </p>
           </div>
         </div>
+      </div>
+    </section>
 
-        <!-- Nástrojová lišta: Export & Zdieľanie -->
-        <div id="crmToolbar" class="crm-toolbar">
-          <button id="exportExcelBtn" class="crm-tool-btn export-btn" type="button" title="Stiahnuť naformátovanú farebnú tabuľku pre Excel (.xls)">
-            📊 Farebný Excel
+    <!-- Ako to funguje -->
+    <section id="ako-to-funguje" class="steps-section">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-tag">JEDNODUCHÝ PROCES</span>
+          <h2 class="section-title">Ako to funguje v praxi?</h2>
+          <p class="section-desc">Získanie 5-hviezdičkovej recenzie nebolo nikdy jednoduchšie pre vás ani pre vašich hostí.</p>
+        </div>
+
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <h3 class="step-title">Položíte na stôl alebo bar</h3>
+            <p class="step-desc">
+              Stojanček vám doručíme kompletne naprogramovaný na váš Google profil. Stačí ho vybrať z krabičky a položiť na pult, recepciu alebo stoly.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <h3 class="step-title">Hosť len priloží smartfón</h3>
+            <p class="step-desc">
+              NFC technológia okamžite prenesie zákazníka priamo do hodnotiaceho okna s 5 predvyplnenými hviezdičkami. Pre staršie telefóny je k dispozícii aj QR kód.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <h3 class="step-title">Rastiete v Google Mapách</h3>
+            <p class="step-desc">
+              Google algoritmus miluje časté a čerstvé hodnotenia. Vaša prevádzka sa posunie na popredné priečky a predbehne konkurenciu v meste.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interaktívna Kalkulačka -->
+    <section id="kalkulacka" class="calculator-section">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-tag">INTERAKTÍVNA KALKULAČKA</span>
+          <h2 class="section-title">Koľko recenzií viete získať?</h2>
+          <p class="section-desc">Nastavte si parametre vašej prevádzky a pozrite si reálny odhad rastu hodnotenia a nových zákazníkov.</p>
+        </div>
+
+        <div class="calc-card">
+          <div class="calc-grid">
+            <div class="calc-inputs">
+              <div class="calc-input-group">
+                <label for="guestsSlider">
+                  <span>Priemerný denný počet hostí:</span>
+                  <span id="guestsDisplay" class="val-display">40 hostí / deň</span>
+                </label>
+                <input id="guestsSlider" class="calc-slider" type="range" min="10" max="250" step="5" value="40" />
+              </div>
+
+              <div class="calc-input-group">
+                <label for="scoreSlider">
+                  <span>Vaše aktuálne Google hodnotenie:</span>
+                  <span id="scoreDisplay" class="val-display">4.2 ★</span>
+                </label>
+                <input id="scoreSlider" class="calc-slider" type="range" min="3.5" max="4.9" step="0.1" value="4.2" />
+              </div>
+
+              <div class="calc-input-group">
+                <label for="reviewsSlider">
+                  <span>Súčasný počet recenzií:</span>
+                  <span id="reviewsDisplay" class="val-display">30 recenzií</span>
+                </label>
+                <input id="reviewsSlider" class="calc-slider" type="range" min="5" max="300" step="5" value="30" />
+              </div>
+            </div>
+
+            <div class="calc-results-box">
+              <div class="calc-results-heading">📈 Odhadovaný mesačný výsledok s NFC stojančekom:</div>
+
+              <div class="calc-kpi-grid">
+                <div class="calc-kpi-card">
+                  <div id="calcNewReviews" class="calc-kpi-val">+96</div>
+                  <div class="calc-kpi-lbl">Nové 5★ recenzie / mesiac</div>
+                </div>
+
+                <div class="calc-kpi-card">
+                  <div id="calcWeeksToGoal" class="calc-kpi-val">3 týždne</div>
+                  <div class="calc-kpi-lbl">Do dosiahnutia skóre 4.8★</div>
+                </div>
+
+                <div class="calc-kpi-card">
+                  <div id="calcCustomerGrowth" class="calc-kpi-val">+25 %</div>
+                  <div class="calc-kpi-lbl">Viac zákazníkov z Google Máp</div>
+                </div>
+
+                <div class="calc-kpi-card">
+                  <div style="font-size: 1.8rem; font-weight: 850; color: #fbbf24; line-height: 1.1; margin-bottom: 4px;">4.8 ★</div>
+                  <div class="calc-kpi-lbl">Cieľové reprezentatívne skóre</div>
+                </div>
+              </div>
+
+              <div class="calc-shield-info">
+                <span style="font-size: 1.3rem;">🛡️</span>
+                <span><strong>Ochranný štít:</strong> S novými recenziami vaša prevádzka bez problémov znesie až <span id="calcShieldCount">6 negatívnych recenzií</span> bez poklesu pod hranicu 4.5★.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Prečo Google recenzie rozhodujú o tržbách -->
+    <section id="vyhody" class="steps-section">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-tag">DÁTA A ŠTATISTIKY</span>
+          <h2 class="section-title">Prečo recenzie priamo ovplyvňujú tržby?</h2>
+          <p class="section-desc">Zákazníci dnes nehľadajú podniky na letákoch – pozerajú si hviezdičky na Google Mapách.</p>
+        </div>
+
+        <div class="steps-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+          <div class="step-card">
+            <div style="font-size: 2.2rem; margin-bottom: 12px;">📍</div>
+            <h3 class="step-title">TOP 3 v Google Mapách</h3>
+            <p class="step-desc">Až 70 % všetkých kliknutí a návštev v meste získajú prvé 3 podniky v lokálnom Google balíku. Kľúčom k prvej trojke sú čerstvé recenzie.</p>
+          </div>
+
+          <div class="step-card">
+            <div style="font-size: 2.2rem; margin-bottom: 12px;">💰</div>
+            <h3 class="step-title">+9 % tržieb za pol hviezdičky</h3>
+            <p class="step-desc">Štúdia Harvard Business School dokázala, že zvýšenie hodnotenia o jediných 0,5★ prináša gastru a službám rast tržieb o 5 % až 9 %.</p>
+          </div>
+
+          <div class="step-card">
+            <div style="font-size: 2.2rem; margin-bottom: 12px;">⚡</div>
+            <h3 class="step-title">Spokojný hosť recenziu nenapíše sám</h3>
+            <p class="step-desc">Až 80 % hostí odíde spokojných, no recenziu napíšu len vtedy, ak je to pre nich otázka 2 sekúnd. NFC stojanček odstraňuje akúkoľvek námahu.</p>
+          </div>
+
+          <div class="step-card">
+            <div style="font-size: 2.2rem; margin-bottom: 12px;">🛡️</div>
+            <h3 class="step-title">Prevencia pred zlým hodnotením</h3>
+            <p class="step-desc">Ak máte málo recenzií, jediná 1★ recenzia od nahnevaného človeka vám zrazí skóre pod 4.0. Stovky 5★ recenzií vytvoria nepriestrelný ochranný štít.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cenník balíkov -->
+    <section id="cennik" class="pricing-section">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-tag">JEDNORAZOVÁ INVESTÍCIA</span>
+          <h2 class="section-title">Transparentné balíky bez mesačných poplatkov</h2>
+          <p class="section-desc">Neplatíte žiadne predplatné. Stojanček kúpite raz a recenzie vám zbiera navždy.</p>
+        </div>
+
+        <div class="pricing-grid">
+          <!-- Balík 1: Štart -->
+          <div class="pricing-card">
+            <h3 class="plan-name">ŠTART</h3>
+            <p class="plan-desc">Ideálne pre menšie prevádzky s jedným pultom alebo recepciou.</p>
+            <div class="plan-price">
+              <span class="price-num">29 €</span>
+              <span class="price-sub">jednorazová platba</span>
+            </div>
+            <ul class="plan-features">
+              <li><span class="check">✓</span> 1× Prémiový akrylový NFC stojanček</li>
+              <li><span class="check">✓</span> Naprogramovaný priamo na váš profil</li>
+              <li><span class="check">✓</span> Laserový QR kód ako poistka</li>
+              <li><span class="check">✓</span> Funguje na iPhone aj Android</li>
+              <li><span class="check">✓</span> Doživotná platnosť bez poplatkov</li>
+            </ul>
+            <button class="btn-secondary" type="button" onclick="selectPackage('Štart (1x stojanček - 29 €)')">
+              Objednať Štart
+            </button>
+          </div>
+
+          <!-- Balík 2: Bestseller -->
+          <div class="pricing-card featured">
+            <div class="featured-badge">🔥 NAJOBĽÚBENEJŠÍ</div>
+            <h3 class="plan-name">DUO BIZNIS</h3>
+            <p class="plan-desc">Najpredávanejší balík pre kaviarne, salóny a reštaurácie.</p>
+            <div class="plan-price">
+              <span class="price-num">49 €</span>
+              <span class="price-sub">jednorazová platba</span>
+            </div>
+            <ul class="plan-features">
+              <li><span class="check">✓</span> <strong>2× Akrylový NFC stojanček</strong> (bar + stoly)</li>
+              <li><span class="check">✓</span> <strong>2× Vodoodolná NFC nálepka</strong> (výklad / pult)</li>
+              <li><span class="check">✓</span> Bezplatné naprogramovanie oboch kusov</li>
+              <li><span class="check">✓</span> <strong>Poštovné & doručenie zadarmo</strong></li>
+              <li><span class="check">✓</span> Garancia 100 % funkčnosti</li>
+            </ul>
+            <button class="btn-primary" type="button" onclick="selectPackage('Duo Biznis (2x stojanček + 2x nálepka - 49 €)')">
+              Objednať Duo Biznis
+            </button>
+          </div>
+
+          <!-- Balík 3: Profi Gastro -->
+          <div class="pricing-card">
+            <h3 class="plan-name">PROFI GASTRO & SALÓN</h3>
+            <p class="plan-desc">Kompletné pokrytie pre vyťaženejšie prevádzky a reštaurácie.</p>
+            <div class="plan-price">
+              <span class="price-num">99 €</span>
+              <span class="price-sub">jednorazová platba</span>
+            </div>
+            <ul class="plan-features">
+              <li><span class="check">✓</span> <strong>5× Prémiový akrylový NFC stojanček</strong></li>
+              <li><span class="check">✓</span> <strong>5× Odolná NFC nálepka</strong></li>
+              <li><span class="check">✓</span> Vlastné logo podniku na stojančekoch</li>
+              <li><span class="check">✓</span> Prioritné vybavenie a odoslanie do 24h</li>
+              <li><span class="check">✓</span> VIP podpora</li>
+            </ul>
+            <button class="btn-secondary" type="button" onclick="selectPackage('Profi Gastro (5x stojanček + 5x nálepka - 99 €)')">
+              Objednať Profi Gastro
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Objednávkový formulár -->
+    <section id="objednavka" class="order-section">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-tag">RÝCHLA OBJEDNÁVKA</span>
+          <h2 class="section-title">Získajte stojančeky pre vašu prevádzku</h2>
+          <p class="section-desc">Vyplňte údaje a stojančeky vám dodáme predprogramované a pripravené na okamžité použitie.</p>
+        </div>
+
+        <div class="order-card">
+          <form id="orderForm">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="orderBusiness">Názov prevádzky / podniku *</label>
+                <input id="orderBusiness" type="text" required placeholder="napr. Kaviareň Radnica" />
+              </div>
+
+              <div class="form-group">
+                <label for="orderCity">Mesto *</label>
+                <input id="orderCity" type="text" required placeholder="napr. Trnava" />
+              </div>
+
+              <div class="form-group">
+                <label for="orderName">Vaše meno a priezvisko *</label>
+                <input id="orderName" type="text" required placeholder="napr. Peter Novák" />
+              </div>
+
+              <div class="form-group">
+                <label for="orderPhone">Telefónne číslo *</label>
+                <input id="orderPhone" type="tel" required placeholder="napr. +421 900 123 456" />
+              </div>
+
+              <div class="form-group form-group-full">
+                <label for="orderPackage">Vybraný balík *</label>
+                <select id="orderPackage" required>
+                  <option value="Duo Biznis (2x stojanček + 2x nálepka - 49 €)">Duo Biznis (2× stojanček + 2× nálepka – 49 €) [Najobľúbenejší]</option>
+                  <option value="Štart (1x stojanček - 29 €)">Štart (1× stojanček – 29 €)</option>
+                  <option value="Profi Gastro (5x stojanček + 5x nálepka - 99 €)">Profi Gastro (5× stojanček + 5× nálepka – 99 €)</option>
+                </select>
+              </div>
+
+              <div class="form-group form-group-full">
+                <label for="orderNote">Poznámka alebo link na váš Google profil (nepovinné)</label>
+                <textarea id="orderNote" rows="2" placeholder="Ak nemáte link, stačí názov podniku a my váš profil vyhľadáme sami."></textarea>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%; margin-top: 20px; justify-content: center;">
+              📩 Odoslať nezáväznú objednávku cez WhatsApp / Správu
+            </button>
+
+            <div id="orderSuccess" class="order-status-msg success hidden">
+              ✓ Objednávka bola pripravená! Pre odoslanie potvrďte správu na WhatsApp.
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq-section">
+      <div class="container">
+        <div class="section-heading">
+          <span class="section-tag">OTÁZKY A ODPOVEDE</span>
+          <h2 class="section-title">Často kladené otázky</h2>
+        </div>
+
+        <div class="faq-list">
+          <div class="faq-item">
+            <div class="faq-question">
+              <span>Platia sa za používanie nejaké mesačné poplatky?</span>
+              <span class="faq-toggle-icon">+</span>
+            </div>
+            <p class="faq-answer hidden">
+              Nie, neplatia sa žiadne mesačné ani ročné poplatky. Platíte iba jednorazovú cenu za fyzický NFC stojanček. Používanie je doživotné a bez obmedzení.
+            </p>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question">
+              <span>Funguje stojanček na každom smartfóne?</span>
+              <span class="faq-toggle-icon">+</span>
+            </div>
+            <p class="faq-answer hidden">
+              Áno! NFC technológia je vstavaná vo všetkých iPhonoch (od iPhone XR/XS vyššie automaticky bez zapínania) a vo všetkých moderných Androidoch (Samsung, Xiaomi, Huawei, Motorola...). Navyše, na každom stojančeku je aj laserový QR kód ako 100 % poistka pre staršie telefóny.
+            </p>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question">
+              <span>Čo ak neviem link na môj Google profil?</span>
+              <span class="faq-toggle-icon">+</span>
+            </div>
+            <p class="faq-answer hidden">
+              Vôbec nevadí. V objednávke stačí zadať presný názov vášho podniku a mesto. Náš tím váš oficiálny profil na Google vyhľadá, vygeneruje priamy hodnotiaci odkaz a nahrá ho priamo do NFC čipu pred odoslaním.
+            </p>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question">
+              <span>Je potrebné, aby si zákazník inštaloval nejakú aplikáciu?</span>
+              <span class="faq-toggle-icon">+</span>
+            </div>
+            <p class="faq-answer hidden">
+              Nie! Zákazník si nemusí sťahovať absolútne nič. Telefón po priložení automaticky otvorí natívnu aplikáciu Google Máp alebo prehliadač s priamym oknom na pridanie hviezdičiek.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <p style="margin-bottom: 8px;">© 2026 NFC Recenzie. Všetky práva vyhradené.</p>
+        <p style="font-size: 0.8rem;">
+          Inteligentné riešenia pre lokálne podniky a prevádzky. · 
+          <a href="#" id="footerLoginLink">🔒 Vstup pre obchodníkov</a>
+        </p>
+      </div>
+    </footer>
+
+    <!-- Login Modal (Obchodný portál / Scraper) -->
+    <div id="loginModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <button id="closeLoginModal" class="modal-close-btn" type="button">✕</button>
+        <div class="auth-logo-badge">🔒 NFC LEADY</div>
+        <h3 style="font-size: 1.4rem; margin-bottom: 8px;">Obchodný portál</h3>
+        <p class="hint" style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px;">
+          Zadajte administrátorské heslo pre prístup k terénnemu scraperu, optimalizácii trás a CRM.
+        </p>
+
+        <form id="modalAuthForm">
+          <input id="modalPinInput" type="password" autocomplete="current-password" placeholder="Zadajte heslo alebo PIN" style="width: 100%; background: rgba(0,0,0,0.4); border: 1.5px solid var(--border); color: #fff; padding: 12px 14px; border-radius: 10px; font-size: 1.1rem; text-align: center; letter-spacing: 2px;" required />
+          <p id="modalAuthError" class="auth-error-msg hidden">⚠️ Nesprávne heslo. Skúste znova.</p>
+          <button type="submit" class="btn-primary" style="width: 100%; margin-top: 16px; justify-content: center;">
+            Odomknúť a vstúpiť
           </button>
-          <button id="exportCsvBtn" class="crm-tool-btn csv-btn" type="button" title="Stiahnuť prehľadnú CSV tabuľku">
-            📄 CSV
-          </button>
-          <button id="shareSummaryBtn" class="crm-tool-btn share-btn" type="button" title="Zdieľať alebo skopírovať sumár dňa">
-            📤 Zdieľať
-          </button>
-        </div>
+        </form>
 
-        <!-- Filtre leadov v teréne -->
-        <div class="leads-filter-tabs">
-          <button id="filterAll" class="filter-tab active" type="button">Všetky (<span id="allCount">0</span>)</button>
-          <button id="filterNew" class="filter-tab" type="button">Nové (<span id="newCount">0</span>)</button>
-          <button id="filterSold" class="filter-tab" type="button">🟢 Predané (<span id="soldCountBadge">0</span>)</button>
-          <button id="filterFollowup" class="filter-tab" type="button">🟡 Neskôr (<span id="followupCount">0</span>)</button>
-          <button id="filterRejected" class="filter-tab" type="button">🔴 Nie (<span id="rejectedCount">0</span>)</button>
-        </div>
+        <p class="hint" style="font-size: 0.76rem; color: #64748b; margin-top: 16px;">
+          Predvolené heslo: <code>nfc2026</code>
+        </p>
+      </div>
+    </div>
 
-        <div id="routeLinks" class="route-links"></div>
-
-        <div id="leadList" class="lead-list">
-          <div id="emptyState" class="empty-state">
-            <p>📭 Zatiaľ nie sú načítané žiadne leady.</p>
-            <p class="hint">Klikni na <strong>📥 Načítať dataset</strong> vyššie pre okamžité zobrazenie podnikov.</p>
-          </div>
-        </div>
-      </section>
-    </main>
-    <script src="app.js?v=8"></script>
+    <!-- Script -->
+    <script src="landing.js?v=1"></script>
   </body>
 </html>

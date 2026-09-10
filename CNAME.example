@@ -1,0 +1,6 @@
+# Príklad obsahu súboru CNAME (bez úvodzoviek, iba čistá doména na jednom riadku):
+# Pre doménu s www:
+www.tvojadomena.sk
+
+# Alebo pre doménu bez www:
+# tvojadomena.sk
