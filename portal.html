@@ -18,20 +18,19 @@
     <!-- Auth Gate / Prihlasovacia obrazovka -->
     <div id="authGate" class="auth-gate-overlay">
       <div class="auth-gate-card">
-        <div class="auth-logo-badge">🔒 NFC LEADY</div>
+        <div class="auth-logo-badge">🔒 RECENZIEĽAHKO</div>
         <h2>Vstup pre obchodníkov</h2>
-        <p class="hint">Pre prístup k terénnemu scraperu a CRM zadaj administrátorské heslo alebo PIN.</p>
+        <p class="hint">Pre prístup k terénnemu scraperu a CRM zadaj administrátorský PIN.</p>
         
         <form id="authForm" onsubmit="return false;" style="margin-top: 16px;">
-          <label for="adminPin" style="text-align: left; display: block;">Prístupové heslo / PIN</label>
-          <input id="adminPin" type="password" autocomplete="current-password" placeholder="Zadaj PIN alebo heslo" style="font-size: 1.1rem; letter-spacing: 2px;" autofocus />
-          <p id="authError" class="auth-error-msg hidden">⚠️ Nesprávne heslo. Skús to znovu.</p>
+          <label for="adminPin" style="text-align: left; display: block;">Prístupový PIN</label>
+          <input id="adminPin" type="password" autocomplete="current-password" placeholder="Zadaj PIN" style="font-size: 1.1rem; letter-spacing: 4px; text-align: center;" autofocus />
+          <p id="authError" class="auth-error-msg hidden">⚠️ Nesprávny PIN. Skús to znovu.</p>
           <button id="authLoginBtn" type="submit" class="primary" style="margin-top: 14px; min-height: 48px;">Odomknúť portál</button>
         </form>
 
         <div style="margin-top: 18px; border-top: 1px solid #e2ece5; padding-top: 14px;">
           <a href="index.html" class="back-to-web-link">← Návrat na verejnú stránku</a>
-          <p class="hint" style="font-size: 0.76rem; margin-top: 8px;">Predvolené heslo pri prvom spustení: <code>nfc2026</code></p>
         </div>
       </div>
     </div>

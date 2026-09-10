@@ -34,7 +34,7 @@ let deferredInstallPrompt = null;
 // ----------------------------------------------------
 const STORAGE_KEY_AUTH = "nfc_portal_auth_token";
 const STORAGE_KEY_PIN = "nfc_portal_admin_pin";
-const DEFAULT_PIN = "nfc2026";
+const DEFAULT_PIN = "178155";
 
 function initAuthGate() {
   const authGate = $("authGate");
