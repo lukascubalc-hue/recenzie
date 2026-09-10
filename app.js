@@ -1,52 +1,172 @@
 const ACTOR = "compass~crawler-google-places";
 const STORAGE_KEY_TOKEN = "apifyToken";
 const STORAGE_KEY_LEADS = "saved_nfc_leads";
+const DEFAULT_DATASET_ID = "tAlrTSyTezjfBSiBf";
 
 const $ = (id) => document.getElementById(id);
 const tokenInput = $("token");
 const status = $("status");
 const findButton = $("findLeads");
 const clearLeadsButton = $("clearLeads");
+const useGpsBtn = $("useGpsBtn");
+const gpsStatus = $("gpsStatus");
+const mainDatasetIdInput = $("mainDatasetId");
+const mainImportDatasetBtn = $("mainImportDatasetBtn");
+const datasetIdInput = $("datasetId");
+const importDatasetBtn = $("importDatasetBtn");
+const installBanner = $("installBanner");
+const installAppBtn = $("installAppBtn");
+const dismissInstallBtn = $("dismissInstallBtn");
 
 let currentRouteData = null;
+let userGpsCoords = null;
+let currentFilter = "all"; // 'all' | 'pending' | 'done'
+let deferredInstallPrompt = null;
 
-function setStatus(message) { status.textContent = message; }
+function setStatus(message) {
+  if (status) status.textContent = message;
+}
 
+// ----------------------------------------------------
+// PWA Inštalácia pre Android / Chrome
+// ----------------------------------------------------
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (installBanner) installBanner.classList.remove("hidden");
+});
+
+if (installAppBtn) {
+  installAppBtn.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    if (choice && choice.outcome === "accepted") {
+      if (installBanner) installBanner.classList.add("hidden");
+      setStatus("Aplikácia sa inštaluje na tvoju plochu.");
+    }
+    deferredInstallPrompt = null;
+  });
+}
+
+if (dismissInstallBtn) {
+  dismissInstallBtn.addEventListener("click", () => {
+    if (installBanner) installBanner.classList.add("hidden");
+  });
+}
+
+window.addEventListener("appinstalled", () => {
+  if (installBanner) installBanner.classList.add("hidden");
+  setStatus("Aplikácia bola úspešne nainštalovaná na plochu.");
+});
+
+// ----------------------------------------------------
+// Inicializácia API tokenu
+// ----------------------------------------------------
 async function initToken() {
   const savedToken = localStorage.getItem(STORAGE_KEY_TOKEN);
   if (savedToken) {
-    tokenInput.value = savedToken;
+    if (tokenInput) tokenInput.value = savedToken;
     setStatus("Token je pripravený z lokálneho úložiska.");
     return;
   }
 
-  // Try to load token safely from server .env via /api/config
+  // Skúsiť načítať token z lokálneho .env cez ./api/config (ak beží server.ps1)
   try {
-    const res = await fetch("/api/config");
+    const res = await fetch("./api/config");
     if (res.ok) {
       const data = await res.json();
       if (data && data.apifyToken) {
-        tokenInput.value = data.apifyToken;
+        if (tokenInput) tokenInput.value = data.apifyToken;
         localStorage.setItem(STORAGE_KEY_TOKEN, data.apifyToken);
         setStatus("Apify token načítaný z .env súboru.");
         return;
       }
     }
   } catch (e) {
-    // Offline or static fallback
+    // Statický hosting ako GitHub Pages - ignorujeme
   }
 
-  setStatus("Pridaj Apify token v nastaveniach alebo do .env súboru.");
+  setStatus("Pripravené. Pre offline leady klikni na Načítať dataset.");
 }
 
-$("settingsButton").addEventListener("click", () => $("settings").classList.toggle("hidden"));
-$("saveToken").addEventListener("click", () => {
-  const val = tokenInput.value.trim();
-  localStorage.setItem(STORAGE_KEY_TOKEN, val);
-  $("settings").classList.add("hidden");
-  setStatus(val ? "Token je uložený v tomto zariadení." : "Token bol vymazaný.");
-});
+if ($("settingsButton")) {
+  $("settingsButton").addEventListener("click", () => {
+    $("settings").classList.toggle("hidden");
+  });
+}
 
+if ($("saveToken")) {
+  $("saveToken").addEventListener("click", () => {
+    const val = tokenInput ? tokenInput.value.trim() : "";
+    localStorage.setItem(STORAGE_KEY_TOKEN, val);
+    $("settings").classList.add("hidden");
+    setStatus(val ? "Token je uložený v tomto zariadení." : "Token bol vymazaný.");
+  });
+}
+
+// ----------------------------------------------------
+// GPS Lokalizácia v teréne (📍 Moja poloha)
+// ----------------------------------------------------
+if (useGpsBtn) {
+  useGpsBtn.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      if (gpsStatus) gpsStatus.textContent = "Geolokácia nie je podporovaná v tomto prehliadači.";
+      return;
+    }
+
+    useGpsBtn.disabled = true;
+    useGpsBtn.textContent = "⏳ Zameriavam…";
+    if (gpsStatus) gpsStatus.textContent = "Získavam presné GPS súradnice…";
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        userGpsCoords = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        };
+        const accuracy = Math.round(pos.coords.accuracy);
+        const addrField = $("startAddress");
+        if (addrField) {
+          addrField.value = `📍 Moja poloha (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`;
+        }
+        if (gpsStatus) {
+          gpsStatus.textContent = `✓ Poloha zameraná (presnosť ±${accuracy}m)`;
+        }
+        useGpsBtn.disabled = false;
+        useGpsBtn.textContent = "📍 Moja poloha";
+
+        // Ak už máme načítané leady, automaticky prepočítame trasu od novej polohy
+        if (currentRouteData && currentRouteData.leads && currentRouteData.leads.length) {
+          setStatus("Prepočítavam trasu od tvojej aktuálnej GPS polohy…");
+          const reoptimized = optimizeRoute(userGpsCoords, currentRouteData.leads);
+          saveLeadsToStorage(userGpsCoords, reoptimized, currentRouteData.city, currentRouteData.savedAt);
+          render(userGpsCoords, reoptimized, currentRouteData.city, currentRouteData.savedAt);
+          setStatus(`Trasa prepočítaná od tvojej GPS polohy (±${accuracy}m).`);
+        }
+      },
+      (err) => {
+        useGpsBtn.disabled = false;
+        useGpsBtn.textContent = "📍 Moja poloha";
+        let errMsg = "Nepodarilo sa získať polohu.";
+        if (err.code === 1) errMsg = "Prístup k polohe bol zamietnutý v nastaveniach.";
+        else if (err.code === 2) errMsg = "GPS signál nie je dostupný.";
+        else if (err.code === 3) errMsg = "Získanie polohy vypršalo (timeout).";
+        if (gpsStatus) gpsStatus.textContent = errMsg;
+        setStatus(errMsg);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 0
+      }
+    );
+  });
+}
+
+// ----------------------------------------------------
+// Optimalizácia trasy & Geokódovanie
+// ----------------------------------------------------
 function distance(a, b) {
   const latScale = 111.32;
   const lngScale = 111.32 * Math.cos((a.lat * Math.PI) / 180);
@@ -66,27 +186,57 @@ function optimizeRoute(start, leads) {
   let current = start;
   while (rest.length) {
     rest.sort((a, b) => distance(current, a.location) - distance(current, b.location));
-    const next = rest.shift(); route.push(next); current = next.location;
+    const next = rest.shift();
+    route.push(next);
+    current = next.location;
   }
   let changed = true;
   while (changed) {
     changed = false;
-    for (let i = 0; i < route.length - 1 && !changed; i++) for (let j = i + 1; j < route.length; j++) {
-      const a = i ? route[i - 1].location : start;
-      const b = route[i].location, c = route[j].location, d = route[j + 1]?.location;
-      const before = distance(a, b) + (d ? distance(c, d) : 0);
-      const after = distance(a, c) + (d ? distance(b, d) : 0);
-      if (after + 0.00001 < before) { route.splice(i, j - i + 1, ...route.slice(i, j + 1).reverse()); changed = true; break; }
+    for (let i = 0; i < route.length - 1 && !changed; i++) {
+      for (let j = i + 1; j < route.length; j++) {
+        const a = i ? route[i - 1].location : start;
+        const b = route[i].location,
+          c = route[j].location,
+          d = route[j + 1]?.location;
+        const before = distance(a, b) + (d ? distance(c, d) : 0);
+        const after = distance(a, c) + (d ? distance(b, d) : 0);
+        if (after + 0.00001 < before) {
+          route.splice(i, j - i + 1, ...route.slice(i, j + 1).reverse());
+          changed = true;
+          break;
+        }
+      }
     }
   }
   return route;
 }
 
 async function geocode(address) {
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(address)}`);
-  const places = await response.json();
-  if (!places[0]) throw new Error("Štartovaciu adresu sa nepodarilo nájsť.");
-  return { lat: Number(places[0].lat), lng: Number(places[0].lon) };
+  if (userGpsCoords && (address.includes("Moja poloha") || address.includes("GPS"))) {
+    return userGpsCoords;
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(address)}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeout);
+    if (response.ok) {
+      const places = await response.json();
+      if (places && places[0]) {
+        return { lat: Number(places[0].lat), lng: Number(places[0].lon) };
+      }
+    }
+  } catch (e) {
+    console.warn("Geocoding failed or timed out, using fallback:", e);
+  }
+  if (address.toLowerCase().includes("trnava")) {
+    return { lat: 48.3775, lng: 17.5883 };
+  }
+  return null;
 }
 
 function mapUrl(origin, stops) {
@@ -105,6 +255,9 @@ function formatSavedTime(isoStr) {
   }
 }
 
+// ----------------------------------------------------
+// Úložisko leadov (LocalStorage)
+// ----------------------------------------------------
 function saveLeadsToStorage(start, leads, city, savedAt) {
   const payload = {
     start,
@@ -123,10 +276,11 @@ function clearSavedLeads() {
   $("leadCount").textContent = "0 leadov";
   if ($("clearLeads")) $("clearLeads").classList.add("hidden");
   if ($("savedAtInfo")) $("savedAtInfo").textContent = "";
+  updateFilterCounters(0, 0, 0);
   $("leadList").innerHTML = `
     <div id="emptyState" class="empty-state">
       <p>📭 Zatiaľ nie sú načítané žiadne leady.</p>
-      <p class="hint">Klikni na <strong>📥 Načítať dataset (#tAlrTSyTezjfBSiBf)</strong> vyššie pre okamžité načítanie 140 podnikov.</p>
+      <p class="hint">Klikni na <strong>📥 Načítať dataset</strong> vyššie pre okamžité zobrazenie podnikov.</p>
     </div>
   `;
   setStatus("Uložené leady boli vymazané.");
@@ -140,6 +294,9 @@ if (clearLeadsButton) {
   });
 }
 
+// ----------------------------------------------------
+// Označovanie vybavených leadov & Filtrovanie
+// ----------------------------------------------------
 function toggleLeadDone(index) {
   if (!currentRouteData || !currentRouteData.leads[index]) return;
   currentRouteData.leads[index].done = !currentRouteData.leads[index].done;
@@ -148,6 +305,110 @@ function toggleLeadDone(index) {
 }
 window.toggleLeadDone = toggleLeadDone;
 
+function updateFilterCounters(allCount, pendingCount, doneCount) {
+  if ($("allCount")) $("allCount").textContent = allCount;
+  if ($("pendingCount")) $("pendingCount").textContent = pendingCount;
+  if ($("doneCount")) $("doneCount").textContent = doneCount;
+}
+
+// Obsluha prepínania filtrov
+function setupFilterTabs() {
+  const tabs = [
+    { id: "filterAll", mode: "all" },
+    { id: "filterPending", mode: "pending" },
+    { id: "filterDone", mode: "done" }
+  ];
+
+  tabs.forEach((tab) => {
+    const el = $(tab.id);
+    if (!el) return;
+    el.addEventListener("click", () => {
+      currentFilter = tab.mode;
+      tabs.forEach((t) => $(t.id)?.classList.remove("active"));
+      el.classList.add("active");
+      if (currentRouteData) {
+        renderLeadList(currentRouteData.leads);
+      }
+    });
+  });
+}
+setupFilterTabs();
+
+function renderLeadList(leads) {
+  const container = $("leadList");
+  if (!container) return;
+
+  const totalCount = leads.length;
+  const doneCount = leads.filter((x) => x.done).length;
+  const pendingCount = totalCount - doneCount;
+
+  updateFilterCounters(totalCount, pendingCount, doneCount);
+
+  let filteredIndices = leads
+    .map((lead, idx) => ({ lead, idx }))
+    .filter(({ lead }) => {
+      if (currentFilter === "pending") return !lead.done;
+      if (currentFilter === "done") return lead.done;
+      return true;
+    });
+
+  if (!filteredIndices.length) {
+    let emptyMsg = "V tejto kategórii sa nenachádzajú žiadne leady.";
+    if (currentFilter === "pending") emptyMsg = "🎉 Všetky leady sú vybavené!";
+    else if (currentFilter === "done") emptyMsg = "Zatiaľ nie je vybavený žiaden podnik.";
+    container.innerHTML = `
+      <div class="empty-state">
+        <p>${emptyMsg}</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filteredIndices
+    .map(({ lead, idx }) => {
+      const isDone = Boolean(lead.done);
+      const phoneDigits = (lead.phone || "").replace(/[^0-9+]/g, "");
+      const navUrl = lead.location
+        ? `https://www.google.com/maps/dir/?api=1&destination=${lead.location.lat},${lead.location.lng}`
+        : lead.url || "#";
+
+      return `
+        <article class="lead ${isDone ? "done" : ""}" id="lead-${idx}">
+          <div class="order">${idx + 1}</div>
+          <div>
+            <div class="lead-header">
+              <h3>${lead.title || "Bez názvu"}</h3>
+            </div>
+            <p class="meta">
+              <span class="meta-rating">★ ${lead.totalScore || "–"}</span> · ${lead.reviewsCount || 0} recenzií · ${lead.categoryName || lead.searchString || "Podnik"}
+            </p>
+            <p class="meta">${lead.address || ""}</p>
+            <div class="lead-actions-row">
+              ${
+                phoneDigits
+                  ? `<a href="tel:${phoneDigits}" class="action-btn btn-call" title="Zavolať podniku">📞 Volať</a>`
+                  : ""
+              }
+              <a href="${navUrl}" target="_blank" rel="noopener" class="action-btn btn-nav" title="Spustiť navigáciu v Google Mapách">🗺 Navigovať</a>
+              ${
+                lead.website
+                  ? `<a href="${lead.website}" target="_blank" rel="noopener" class="action-btn btn-web" title="Navštíviť web">🌐 Web</a>`
+                  : ""
+              }
+              <button type="button" class="action-btn btn-toggle-done" onclick="toggleLeadDone(${idx})">
+                ${isDone ? "✓ Vybavené" : "Označiť"}
+              </button>
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+// ----------------------------------------------------
+// Vykreslenie celej trasy a zoznamu
+// ----------------------------------------------------
 function render(start, leads, city, savedAt) {
   currentRouteData = { start, leads, city, savedAt: savedAt || new Date().toISOString() };
   $("resultTitle").textContent = `Trasa: ${city}`;
@@ -162,36 +423,19 @@ function render(start, leads, city, savedAt) {
     savedAtElem.textContent = formatSavedTime(currentRouteData.savedAt);
   }
 
-  const chunks = []; for (let i = 0; i < leads.length; i += 7) chunks.push(leads.slice(i, i + 7));
+  // Generovanie odkazov na Google Maps (rozdelené po 7 zastávkach)
+  const chunks = [];
+  for (let i = 0; i < leads.length; i += 7) chunks.push(leads.slice(i, i + 7));
   let previous = start;
-  $("routeLinks").innerHTML = chunks.map((chunk, index) => {
-    const url = mapUrl(previous, chunk); previous = chunk.at(-1).location;
-    return `<a href="${url}" target="_blank" rel="noopener">Otvoriť trasu ${index + 1}</a>`;
-  }).join("");
+  $("routeLinks").innerHTML = chunks
+    .map((chunk, index) => {
+      const url = mapUrl(previous, chunk);
+      previous = chunk.at(-1).location;
+      return `<a href="${url}" target="_blank" rel="noopener">🗺 Celá trasa (časť ${index + 1})</a>`;
+    })
+    .join("");
 
-  $("leadList").innerHTML = leads.map((lead, index) => {
-    const isDone = Boolean(lead.done);
-    return `
-      <article class="lead ${isDone ? "done" : ""}">
-        <div class="order">${index + 1}</div>
-        <div>
-          <div class="lead-header">
-            <h3>${lead.title}</h3>
-            <button type="button" class="toggle-done-btn" onclick="toggleLeadDone(${index})">
-              ${isDone ? "✓ Vybavené" : "Označiť vybavené"}
-            </button>
-          </div>
-          <p class="meta">${lead.searchString || "Prevádzka"} · ★ ${lead.totalScore || "–"} · ${lead.reviewsCount || 0} recenzií</p>
-          <p class="meta">${lead.address || ""}</p>
-          <div class="lead-actions">
-            ${lead.phone ? `<a href="tel:${lead.phoneUnformatted || lead.phone}">📞 ${lead.phone}</a> · ` : ""}
-            <a href="${lead.url}" target="_blank" rel="noopener">Google Maps ↗</a>
-            ${lead.website ? ` · <a href="${lead.website}" target="_blank" rel="noopener">Web ↗</a>` : ""}
-          </div>
-        </div>
-      </article>
-    `;
-  }).join("");
+  renderLeadList(leads);
 }
 
 function restoreSavedLeads() {
@@ -210,112 +454,48 @@ function restoreSavedLeads() {
   return false;
 }
 
-async function waitForRun(runId, token) {
-  for (let attempt = 0; attempt < 90; attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, 2500));
-    const response = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${encodeURIComponent(token)}`);
-    const run = (await response.json()).data;
-    if (run.status === "SUCCEEDED") return run;
-    if (["FAILED", "ABORTED", "TIMED-OUT"].includes(run.status)) throw new Error(`Apify run skončil stavom: ${run.status}`);
-    setStatus(`Hľadám prevádzky… (${run.status.toLowerCase()})`);
-  }
-  throw new Error("Vyhľadávanie trvá príliš dlho. Skús to znovu.");
-}
-
-findButton.addEventListener("click", async () => {
-  const token = (tokenInput.value || localStorage.getItem(STORAGE_KEY_TOKEN) || "").trim();
-  const city = $("city").value.trim();
-  const startAddress = $("startAddress").value.trim();
-  const categories = $("categories").value.split(",").map((x) => x.trim()).filter(Boolean);
-  const maxReviews = Number($("maxReviews").value);
-  const maxLeads = Number($("maxLeads").value);
-
-  if (!token || !city || !startAddress || !categories.length) {
-    setStatus("Doplň token, mesto, adresu a aspoň jednu kategóriu.");
-    return;
-  }
-
-  findButton.disabled = true;
-  try {
-    setStatus("Spúšťam Google Maps scraper…");
-    const input = { searchStringsArray: categories, locationQuery: `${city}, Slovakia`, maxCrawledPlacesPerSearch: 20, language: "sk" };
-    const response = await fetch(`https://api.apify.com/v2/acts/${ACTOR}/runs?token=${encodeURIComponent(token)}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(input)
-    });
-    if (!response.ok) throw new Error("Apify odmietol spustenie. Skontroluj token a kredit.");
-    const started = (await response.json()).data;
-    const [run, start] = await Promise.all([waitForRun(started.id, token), geocode(startAddress)]);
-    setStatus("Vyberám najlepšie leady a plánujem trasu…");
-    const dataResponse = await fetch(`https://api.apify.com/v2/datasets/${run.defaultDatasetId}/items?token=${encodeURIComponent(token)}`);
-    const rawLeads = await dataResponse.json();
-    const eligible = rawLeads.filter((x) => x.phone && x.location && x.reviewsCount >= 5 && x.reviewsCount <= maxReviews && x.totalScore >= 4.5 && !x.permanentlyClosed && !x.temporarilyClosed).sort((a, b) => leadScore(b) - leadScore(a));
-    const byCategory = new Map();
-    const balanced = eligible.filter((x) => {
-      const used = byCategory.get(x.searchString) || 0;
-      if (used >= 5) return false;
-      byCategory.set(x.searchString, used + 1);
-      return true;
-    }).slice(0, maxLeads);
-
-    if (!balanced.length) throw new Error("Nenašli sa leady, ktoré spĺňajú nastavené filtre.");
-    const optimized = optimizeRoute(start, balanced);
-    saveLeadsToStorage(start, optimized, city);
-    render(start, optimized, city);
-    setStatus(`Hotovo: ${rawLeads.length} výsledkov → ${balanced.length} kvalitných leadov uložených.`);
-  } catch (error) {
-    setStatus(error.message || "Niečo sa nepodarilo. Skús to znovu.");
-  } finally {
-    findButton.disabled = false;
-  }
-});
-
-const importDatasetBtn = $("importDatasetBtn");
-const datasetIdInput = $("datasetId");
-
+// ----------------------------------------------------
+// Import existujúceho Apify datasetu (alebo lokálneho JSON súboru)
+// ----------------------------------------------------
 async function importDataset(datasetId) {
-  const token = (tokenInput.value || localStorage.getItem(STORAGE_KEY_TOKEN) || "").trim();
-  if (!token) {
-    setStatus("Pre import datasetu je nutný Apify token. Vlož ho do nastavení alebo do .env.");
-    $("settings").classList.remove("hidden");
-    return;
-  }
-  const cleanId = (datasetId || "").replace(/^#/, "").trim();
+  const cleanId = (datasetId || DEFAULT_DATASET_ID).trim();
   if (!cleanId) {
-    setStatus("Zadaj platné Apify Dataset ID.");
+    setStatus("Zadaj platné Dataset ID.");
     return;
   }
 
-  const city = $("city").value.trim() || "Importované";
-  const startAddress = $("startAddress").value.trim();
-  const maxReviews = Number($("maxReviews").value) || 500;
-  const maxLeads = Number($("maxLeads").value) || 30;
-
-  if (importDatasetBtn) importDatasetBtn.disabled = true;
-  setStatus(`Sťahujem dataset #${cleanId}…`);
+  const btn = mainImportDatasetBtn || importDatasetBtn;
+  if (btn) btn.disabled = true;
+  setStatus(`Načítavam dataset #${cleanId}…`);
 
   try {
+    const city = $("city").value.trim() || "Trnava";
+    const startAddress = $("startAddress").value.trim();
+    const maxReviews = Number($("maxReviews").value) || 50;
+    const maxLeads = Number($("maxLeads").value) || 20;
+
     let rawLeads = null;
 
-    // Fast local cache path
-    if (cleanId === "tAlrTSyTezjfBSiBf") {
+    // 1. Skúsiť načítať priamo z lokálne pribaleného JSON datasetu (funguje instantne offline aj online)
+    if (cleanId === DEFAULT_DATASET_ID) {
       try {
-        const localRes = await fetch("dataset_leads.json");
+        const localRes = await fetch("./dataset_leads.json");
         if (localRes.ok) {
           rawLeads = await localRes.json();
         }
       } catch (e) {
-        // Fallback to network
+        console.warn("Lokálny dataset_leads.json sa nepodarilo načítať:", e);
       }
     }
 
+    // 2. Ak lokálny súbor neexistuje alebo ide o iné ID, stiahnuť z Apify verejnej API
     if (!rawLeads) {
-      const res = await fetch(`https://api.apify.com/v2/datasets/${cleanId}/items?token=${encodeURIComponent(token)}`);
+      const token = (tokenInput ? tokenInput.value : "") || localStorage.getItem(STORAGE_KEY_TOKEN) || "";
+      const tokenQuery = token ? `?token=${encodeURIComponent(token.trim())}` : "";
+      const url = `https://api.apify.com/v2/datasets/${encodeURIComponent(cleanId)}/items${tokenQuery}`;
+      const res = await fetch(url);
       if (!res.ok) {
-        if (res.status === 403) throw new Error("Apify 403: Neplatný token alebo nemáš oprávnenie k tomuto datasetu.");
-        if (res.status === 404) throw new Error(`Dataset #${cleanId} sa nenašiel.`);
-        throw new Error(`Apify chyba (HTTP ${res.status}).`);
+        throw new Error(`Dataset #${cleanId} sa nepodarilo stiahnuť (HTTP ${res.status}).`);
       }
       rawLeads = await res.json();
     }
@@ -326,8 +506,8 @@ async function importDataset(datasetId) {
 
     setStatus(`Spracovávam ${rawLeads.length} leadov z datasetu…`);
 
-    let start = null;
-    if (startAddress) {
+    let start = userGpsCoords;
+    if (!start && startAddress) {
       try {
         start = await geocode(startAddress);
       } catch (e) {
@@ -335,7 +515,9 @@ async function importDataset(datasetId) {
       }
     }
 
-    const eligible = rawLeads.filter((x) => x.phone && x.location && (!x.reviewsCount || x.reviewsCount <= maxReviews) && !x.permanentlyClosed && !x.temporarilyClosed).sort((a, b) => leadScore(b) - leadScore(a));
+    const eligible = rawLeads
+      .filter((x) => x.phone && x.location && (!x.reviewsCount || x.reviewsCount <= maxReviews) && !x.permanentlyClosed && !x.temporarilyClosed)
+      .sort((a, b) => leadScore(b) - leadScore(a));
     const leadsToProcess = eligible.length ? eligible : rawLeads.filter((x) => x.location);
 
     if (!leadsToProcess.length) {
@@ -356,32 +538,111 @@ async function importDataset(datasetId) {
   } catch (err) {
     setStatus(err.message || "Chyba pri importe datasetu.");
   } finally {
-    if (importDatasetBtn) importDatasetBtn.disabled = false;
+    if (btn) btn.disabled = false;
   }
 }
 
-if (importDatasetBtn) {
-  importDatasetBtn.addEventListener("click", () => {
-    const val = datasetIdInput ? datasetIdInput.value : "";
+if (mainImportDatasetBtn) {
+  mainImportDatasetBtn.addEventListener("click", () => {
+    const val = mainDatasetIdInput ? mainDatasetIdInput.value : DEFAULT_DATASET_ID;
     importDataset(val);
   });
 }
 
-const quickImportBtn = $("quickImportBtn");
-if (quickImportBtn) {
-  quickImportBtn.addEventListener("click", () => {
-    importDataset("tAlrTSyTezjfBSiBf");
+if (importDatasetBtn) {
+  importDatasetBtn.addEventListener("click", () => {
+    const val = datasetIdInput ? datasetIdInput.value : DEFAULT_DATASET_ID;
+    importDataset(val);
   });
 }
 
-// Initialize on page load
+// ----------------------------------------------------
+// Spustenie nového Apify crawlera
+// ----------------------------------------------------
+async function waitForRun(runId, token) {
+  for (let attempt = 0; attempt < 90; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    const response = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${encodeURIComponent(token)}`);
+    const run = (await response.json()).data;
+    if (run.status === "SUCCEEDED") return run;
+    if (["FAILED", "ABORTED", "TIMED-OUT"].includes(run.status)) throw new Error(`Apify run skončil stavom: ${run.status}`);
+    setStatus(`Hľadám prevádzky… (${run.status.toLowerCase()})`);
+  }
+  throw new Error("Vyhľadávanie trvá príliš dlho. Skús to znovu.");
+}
+
+if (findButton) {
+  findButton.addEventListener("click", async () => {
+    const token = (tokenInput.value || localStorage.getItem(STORAGE_KEY_TOKEN) || "").trim();
+    const city = $("city").value.trim();
+    const startAddress = $("startAddress").value.trim();
+    const categories = $("categories").value.split(",").map((x) => x.trim()).filter(Boolean);
+    const maxReviews = Number($("maxReviews").value);
+    const maxLeads = Number($("maxLeads").value);
+
+    if (!token) return setStatus("Zadaj najprv Apify token.");
+    if (!city) return setStatus("Zadaj mesto.");
+    if (!startAddress) return setStatus("Zadaj štartovaciu adresu.");
+
+    findButton.disabled = true;
+    try {
+      setStatus("Získavam polohu štartu…");
+      const start = await geocode(startAddress);
+      setStatus("Spúšťam Apify crawler…");
+
+      const queries = categories.map((c) => `${c} ${city}`);
+      const runRes = await fetch(`https://api.apify.com/v2/acts/${ACTOR}/runs?token=${encodeURIComponent(token)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          searchStringsArray: queries,
+          locationQuery: `${city}, Slovakia`,
+          maxCrawledPlacesPerSearch: 25,
+          language: "sk",
+          skipClosedPlaces: true
+        })
+      });
+
+      if (!runRes.ok) throw new Error("Nepodarilo sa spustiť Apify crawler.");
+      const runData = (await runRes.json()).data;
+      setStatus("Crawler beží na pozadí…");
+
+      const finishedRun = await waitForRun(runData.id, token);
+      const datasetRes = await fetch(`https://api.apify.com/v2/datasets/${finishedRun.defaultDatasetId}/items?token=${encodeURIComponent(token)}`);
+      const items = await datasetRes.json();
+
+      const eligible = items
+        .filter((x) => x.phone && x.location && (!x.reviewsCount || x.reviewsCount <= maxReviews) && !x.permanentlyClosed && !x.temporarilyClosed)
+        .sort((a, b) => leadScore(b) - leadScore(a));
+
+      if (!eligible.length) throw new Error("Nenašli sa vyhovujúce leady.");
+
+      const balanced = eligible.slice(0, maxLeads);
+      const optimized = optimizeRoute(start, balanced);
+
+      saveLeadsToStorage(start, optimized, city);
+      render(start, optimized, city);
+      setStatus(`Hotovo! Nájdených ${optimized.length} leadov.`);
+    } catch (err) {
+      setStatus(err.message || "Nastala chyba pri hľadaní leadov.");
+    } finally {
+      findButton.disabled = false;
+    }
+  });
+}
+
+// ----------------------------------------------------
+// Inicializácia pri štarte aplikácie
+// ----------------------------------------------------
 async function bootstrap() {
   await initToken();
   const restored = restoreSavedLeads();
   if (!restored) {
-    importDataset("tAlrTSyTezjfBSiBf");
+    importDataset(DEFAULT_DATASET_ID);
   }
 }
 bootstrap();
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=3");
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js?v=4");
+}

@@ -29,6 +29,7 @@ $mimeTypes = @{
     ".json"        = "application/json; charset=utf-8"
     ".webmanifest" = "application/manifest+json"
     ".ico"         = "image/x-icon"
+    ".png"         = "image/png"
 }
 
 try {

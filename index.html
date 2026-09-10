@@ -4,14 +4,33 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#12372a" />
-    <meta name="description" content="Mobilný výber NFC review leadov z Google Maps." />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="Mobilný výber NFC review leadov z Google Maps v teréne." />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=3" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <link rel="stylesheet" href="styles.css?v=4" />
     <title>NFC Leady</title>
   </head>
   <body>
     <main class="app-shell">
+      <!-- PWA Install Banner pre Android -->
+      <div id="installBanner" class="panel install-banner hidden">
+        <div class="install-banner-content">
+          <span class="install-banner-icon">📲</span>
+          <div>
+            <strong>Nainštalovať aplikáciu</strong>
+            <p class="hint">Používaj NFC Leady ako natívnu aplikáciu priamo na ploche mobilu.</p>
+          </div>
+        </div>
+        <div class="install-banner-actions">
+          <button id="installAppBtn" class="primary" style="margin-top:0;">Inštalovať</button>
+          <button id="dismissInstallBtn" class="secondary">Neskôr</button>
+        </div>
+      </div>
+
       <header>
         <div>
           <p class="eyebrow">NFC REVIEW TAGY</p>
@@ -34,14 +53,30 @@
         <button id="importDatasetBtn" class="secondary">Importovať dataset</button>
       </section>
 
+      <!-- Rýchly import datasetu -->
+      <section class="panel dataset-panel">
+        <p class="eyebrow">RÝCHLY IMPORT Z APIFY</p>
+        <label for="mainDatasetId">Apify Dataset ID</label>
+        <div class="input-action-row">
+          <input id="mainDatasetId" type="text" autocomplete="off" value="tAlrTSyTezjfBSiBf" placeholder="napr. tAlrTSyTezjfBSiBf" />
+          <button id="mainImportDatasetBtn" class="primary import-btn">📥 Načítať dataset</button>
+        </div>
+        <p class="hint">Vlož ID datasetu a aplikácia okamžite stiahne a zobrazí všetky podniky.</p>
+      </section>
+
+      <!-- Parametre trasy & crawler -->
       <section class="panel form-panel">
         <label for="city">Mesto</label>
         <input id="city" autocomplete="address-level2" value="Trnava" placeholder="napr. Trnava" />
 
-        <label for="startAddress">Štartovacia adresa</label>
-        <input id="startAddress" autocomplete="street-address" value="Hlavná 12, Trnava" placeholder="napr. Hlavná 12, Trnava" />
+        <label for="startAddress">Štartovacia adresa / Poloha</label>
+        <div class="input-action-row">
+          <input id="startAddress" autocomplete="street-address" value="Hlavná 12, Trnava" placeholder="napr. Hlavná 12, Trnava" />
+          <button id="useGpsBtn" type="button" class="secondary gps-btn" title="Použiť moju aktuálnu GPS polohu">📍 Moja poloha</button>
+        </div>
+        <p id="gpsStatus" class="hint gps-status"></p>
 
-        <label for="categories">Typy prevádzok</label>
+        <label for="categories" style="margin-top:10px;">Typy prevádzok</label>
         <textarea id="categories" rows="3">reštaurácia, kaviareň, kaderníctvo, kozmetický salón, autoservis, zubár, fitness centrum</textarea>
 
         <div class="filters">
@@ -49,14 +84,14 @@
           <label>Max. leadov <input id="maxLeads" type="number" min="1" max="30" value="20" /></label>
         </div>
         <button id="findLeads" class="primary">Nájsť najlepšie leady (nový crawler)</button>
-        <button id="quickImportBtn" class="secondary" style="width:100%; margin-top:8px;">📥 Načítať dataset (#tAlrTSyTezjfBSiBf)</button>
-        <p id="status" class="status" aria-live="polite">Pridaj Apify token v nastaveniach.</p>
+        <p id="status" class="status" aria-live="polite">Pripravené.</p>
       </section>
 
+      <!-- Zoznam a trasa leadov -->
       <section id="result">
         <div class="result-heading">
           <div>
-            <p id="resultEyebrow" class="eyebrow">ZOZNAM LEADOV</p>
+            <p id="resultEyebrow" class="eyebrow">ZOZNAM LEADOV V TERÉNE</p>
             <h2 id="resultTitle">Trasa & Vybrané prevádzky</h2>
             <p id="savedAtInfo" class="hint"></p>
           </div>
@@ -65,15 +100,24 @@
             <button id="clearLeads" class="secondary clear-btn hidden" title="Vymazať uložené leady">✕ Zmazať</button>
           </div>
         </div>
+
+        <!-- Filtre leadov v teréne -->
+        <div class="leads-filter-tabs">
+          <button id="filterAll" class="filter-tab active" type="button">Všetky (<span id="allCount">0</span>)</button>
+          <button id="filterPending" class="filter-tab" type="button">Nevybavené (<span id="pendingCount">0</span>)</button>
+          <button id="filterDone" class="filter-tab" type="button">Vybavené (<span id="doneCount">0</span>)</button>
+        </div>
+
         <div id="routeLinks" class="route-links"></div>
+
         <div id="leadList" class="lead-list">
           <div id="emptyState" class="empty-state">
             <p>📭 Zatiaľ nie sú načítané žiadne leady.</p>
-            <p class="hint">Klikni na <strong>📥 Načítať dataset (#tAlrTSyTezjfBSiBf)</strong> vyššie pre okamžité načítanie 140 podnikov.</p>
+            <p class="hint">Klikni na <strong>📥 Načítať dataset</strong> vyššie pre okamžité zobrazenie podnikov.</p>
           </div>
         </div>
       </section>
     </main>
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
   </body>
 </html>
